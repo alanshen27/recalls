@@ -22,7 +22,6 @@ model User {
   flashcardSets FlashcardSet[]
   sharedSets    SharedSet[]
   notifications Notification[]
-  worksheets    Worksheet[]
 }
 
 model Account {
@@ -56,8 +55,8 @@ model FlashcardSet {
   id          String      @id @default(cuid())
   title       String
   description String?
-  ownerId     String
-  owner       User        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
+  ownerId     String?
+  owner       User?        @relation(fields: [ownerId], references: [id], onDelete: Cascade)
   labels      String?     // Comma-separated list of labels
   flashcards  Flashcard[]
   createdAt   DateTime    @default(now())
@@ -106,32 +105,4 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
-}
-
-model Worksheet {
-  id          String   @id @default(cuid())
-  title       String
-  description String?
-  createdAt   DateTime @default(now())
-  userId      String
-  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  questions   Question[]
-}
-
-model Question {
-  id          String   @id @default(cuid())
-  order       Int
-  worksheetId String
-  worksheet   Worksheet @relation(fields: [worksheetId], references: [id], onDelete: Cascade)
-  blocks      Block[]
-}
-
-model Block {
-  id            String   @id @default(cuid())
-  content       String
-  type          String   // 'text' or 'blank'
-  expectedAnswer String?
-  order         Int
-  questionId    String
-  question      Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 }

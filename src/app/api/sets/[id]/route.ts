@@ -3,6 +3,18 @@ import { getServerSession } from 'next-auth';
 import { prisma } from '@/lib/prisma';
 import { authOptions } from "@/lib/auth";
 
+export async function OPTIONS() {
+  return new NextResponse(null, {
+      status: 204,
+      headers: {
+          'Access-Control-Allow-Origin': 'http://localhost:3000',
+          'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
+          'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+          'Access-Control-Max-Age': '86400',
+      },
+  });
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -10,6 +22,34 @@ export async function GET(
   const { id } = await params;
   try {
     const session = await getServerSession(authOptions);
+    
+    if (!session?.user) {
+      const set = await prisma.flashcardSet.findUnique({
+        where: {
+          id: id,
+        },
+        select: {
+          flashcards: true,
+          ownerId: true,
+        }
+      });
+
+      if (!set) {
+        return new NextResponse('Set not found', { status: 404 });
+      }
+
+      if (!set.ownerId) {
+        const response = NextResponse.json(set);
+        response.headers.set('Access-Control-Allow-Origin', 'http://localhost:3000');
+        response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+        response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
+        return response;
+      }
+
+      return NextResponse.json('Unauthorized', { status: 401 });
+      
+    }
+
     if (!session?.user) {
       return new NextResponse('Unauthorized', { status: 401 });
     }

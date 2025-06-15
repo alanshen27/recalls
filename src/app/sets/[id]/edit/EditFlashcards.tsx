@@ -83,6 +83,10 @@ export default function EditFlashcards({ setId, initialFlashcards }: EditFlashca
   const saveFlashcards = async (cards: Flashcard[]) => {
     if (isSaved) return;
     setIsSaving(true);
+    
+    // Store the current state before saving
+    const preSaveState = [...cards];
+    
     try {
       const response = await fetch(`/api/sets/${setId}/flashcards`, {
         method: 'PUT',
@@ -92,58 +96,51 @@ export default function EditFlashcards({ setId, initialFlashcards }: EditFlashca
 
       if (!response.ok) throw new Error('Failed to save flashcards');
 
-      // Only fetch updated flashcards if there are new or deleted cards
+      // Only handle ID updates for new cards
       const hasNewCards = cards.some(card => card.id.startsWith('temp_'));
-      const hasDeletedCards = lastState.some(lastCard => 
-        !cards.some(currentCard => currentCard.id === lastCard.id)
-      );
-
-      if (hasNewCards || hasDeletedCards) {
-        // Only fetch if we need to get new IDs or confirm deletions
+      
+      if (hasNewCards) {
         const updatedResponse = await fetch(`/api/sets/${setId}/flashcards`);
         if (!updatedResponse.ok) throw new Error('Failed to fetch updated flashcards');
         const updatedFlashcards = await updatedResponse.json();
 
-        // Update state only for new or deleted cards
+        // Only update IDs, preserve current content
         setFlashcards(prev => {
-          const newState = [...prev];
-          // Update IDs for new cards
-          updatedFlashcards.forEach((updated: Flashcard) => {
-            const index = newState.findIndex(f => f.id.startsWith('temp_') && 
-              f.term === updated.term && f.definition === updated.definition);
-            if (index !== -1) {
-              newState[index] = updated;
+          return prev.map(card => {
+            if (card.id.startsWith('temp_')) {
+              const updated = updatedFlashcards.find(
+                (u: Flashcard) => u.term === card.term && u.definition === card.definition
+              );
+              if (updated) {
+                // Only update the ID, keep the current content
+                return { ...card, id: updated.id };
+              }
             }
+            return card;
           });
-          // Remove deleted cards
-          return newState.filter(f => 
-            updatedFlashcards.some((updated: Flashcard) => updated.id === f.id)
-          );
         });
 
         // Emit events for new cards
         updatedFlashcards.forEach((flashcard: Flashcard) => {
           const currentFlashcard = lastState.find(f => f.id === flashcard.id);
           if (!currentFlashcard) {
-            console.log('Emitting new flashcard create:', flashcard);
             emitFlashcardCreate(flashcard, 'system');
           }
         });
       } else {
-        // For existing cards, just emit updates for changed cards
+        // For existing cards, only emit updates for changed cards
         cards.forEach((flashcard: Flashcard) => {
           const currentFlashcard = lastState.find(f => f.id === flashcard.id);
           if (currentFlashcard && (
             flashcard.term !== currentFlashcard.term ||
             flashcard.definition !== currentFlashcard.definition
           )) {
-            console.log('Emitting flashcard update:', flashcard);
             emitFlashcardUpdate(flashcard, 'system');
           }
         });
       }
 
-      setLastState(cards);
+      setLastState(preSaveState);
       toast.success('Flashcards saved successfully');
     } catch (error) {
       console.error('Error saving flashcards:', error);
