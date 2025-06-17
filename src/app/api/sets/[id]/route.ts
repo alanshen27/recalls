@@ -7,7 +7,7 @@ export async function OPTIONS() {
   return new NextResponse(null, {
       status: 204,
       headers: {
-          'Access-Control-Allow-Origin': process.env.NOTABLE_URL!,
+          'Access-Control-Allow-Origin': process.env.NOTABLE_URL || 'https://www.notable.sh',
           'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
           'Access-Control-Allow-Headers': 'Content-Type, Authorization',
           'Access-Control-Max-Age': '86400',
@@ -40,7 +40,7 @@ export async function GET(
 
       if (!set.ownerId) {
         const response = NextResponse.json(set);
-        response.headers.set('Access-Control-Allow-Origin', process.env.NOTABLE_URL!);
+        response.headers.set('Access-Control-Allow-Origin', process.env.NOTABLE_URL || 'https://www.notable.sh');
         response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
         response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization');
         return response;
@@ -82,7 +82,7 @@ export async function GET(
     if(!set.ownerId) {
       return NextResponse.json(set, {
         headers: {
-          'Access-Control-Allow-Origin': process.env.NOTABLE_URL!,
+          'Access-Control-Allow-Origin': process.env.NOTABLE_URL || 'https://www.notable.sh',
           'Access-Control-Allow-Methods': 'GET, POST, PUT, DELETE, OPTIONS',
           'Access-Control-Allow-Headers': 'Content-Type, Authorization',
         },
