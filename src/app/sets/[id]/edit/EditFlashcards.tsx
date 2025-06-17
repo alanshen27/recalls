@@ -206,6 +206,19 @@ export default function EditFlashcards({ setId, initialFlashcards }: EditFlashca
                 className="flex-1"
                 onFocus={() => emitFlashcardLock(flashcard.id, 'system')}
                 onBlur={() => emitFlashcardUnlock(flashcard.id, 'system')}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault();
+                    if (index === flashcards.length - 1) {
+                      addFlashcard();
+                    } else {
+                      const nextInput = document.querySelector(
+                        `input[data-index="${index + 1}"]`
+                      ) as HTMLInputElement;
+                      nextInput?.focus();
+                    }
+                  }
+                }}
                 disabled={lockedFlashcards.includes(flashcard.id)}
               />
               <Input
