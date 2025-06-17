@@ -47,6 +47,38 @@ export async function POST(request: NextRequest) {
                 definition: 'The .... of many different countries',
             }
         ]    
+
+        For example, if the notes are:
+        \`\`\`
+        # Globalization
+        Globalization is the process of increasing interconnectedness and interdependence between countries and peoples.
+        \`\`\`
+        Then your response should be:
+
+        [
+            {
+                term: 'Globalization',
+                definition: 'The process of increasing interconnectedness and interdependence between countries and peoples.',
+            }
+        ]
+    
+        Without any formatting and just purely JSON.
+
+        Another example:
+        \`\`\`
+        # The Great Gatsby
+        The Great Gatsby is a novel by F. Scott Fitzgerald.
+        \`\`\`
+        Then your response should be:
+
+        [
+            {
+                term: 'The Great Gatsby',
+                definition: 'A novel by F. Scott Fitzgerald.',
+            }
+        ]
+
+        Without any formatting and just purely JSON.
         `.replace(/```json/g, "").replace(/```/g, "");
 
         const flashcardsResponse = await client.chat.completions.create({     
