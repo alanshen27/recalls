@@ -59,7 +59,11 @@ export async function GET(
         id: id,
       },
       include: {
-        flashcards: true,
+        flashcards: {
+          orderBy: {
+            createdAt: 'asc'
+          }
+        },
         sharedWith: {
           include: {
             sharedWith: {
