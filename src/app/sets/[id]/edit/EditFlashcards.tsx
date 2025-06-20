@@ -30,24 +30,38 @@ export default function EditFlashcards({ setId, initialFlashcards }: EditFlashca
   const [isSaved, setIsSaved] = useState(true);
   const debouncedFlashcards = useDebounce(flashcards, 1000);
   const [focusedDefinition, setFocusedDefinition] = useState<string | null>(null);
+  const [focusedTerm, setFocusedTerm] = useState<string | null>(null);
   const [autocomplete, setAutocomplete] = useState<string | null>(null);
 
 
   useEffect(() => {
-    if (focusedDefinition && !flashcards.find((f) => f.id === focusedDefinition)?.definition?.length) {
+    if (focusedDefinition && !flashcards.find((f) => f.id === focusedDefinition)?.definition?.length && !focusedTerm) {
       console.log('fetching autocomplete');
       setAutocomplete("Loading AI completion...");
       const fetchAutocomplete = async () => {
         const response = await fetch(`/api/sets/${setId}/completion`, {
           method: 'POST',
-          body: JSON.stringify({ term: flashcards.find((f) => f.id === focusedDefinition)?.term }),
+          body: JSON.stringify({ word: flashcards.find((f) => f.id === focusedDefinition)?.term, type: 'term' }),
         });
         const data = await response.json();
         setAutocomplete(data);
       };
       fetchAutocomplete();
     }
-  }, [focusedDefinition, flashcards]);
+    if (focusedTerm && !flashcards.find((f) => f.id === focusedTerm)?.term?.length && !focusedDefinition) {
+      console.log('fetching autocomplete');
+      setAutocomplete("Loading AI completion...");
+      const fetchAutocomplete = async () => {
+        const response = await fetch(`/api/sets/${setId}/completion`, {
+          method: 'POST',
+          body: JSON.stringify({ word: flashcards.find((f) => f.id === focusedTerm)?.definition, type: 'definition' }),
+        });
+        const data = await response.json();
+        setAutocomplete(data);
+      };
+      fetchAutocomplete();
+    }
+  }, [focusedDefinition, focusedTerm, flashcards]);
 
   const flashcardRefs = useRef<Record<string, HTMLInputElement>>({});
 
@@ -199,6 +213,7 @@ export default function EditFlashcards({ setId, initialFlashcards }: EditFlashca
     setIsSaved(false);
     const newFlashcards = [...flashcards];
     newFlashcards[index] = { ...newFlashcards[index], [field]: value };
+
     setFlashcards(newFlashcards);
   };
 
@@ -222,6 +237,7 @@ export default function EditFlashcards({ setId, initialFlashcards }: EditFlashca
               </div>
             )}
             <div className="flex items-center gap-2">
+              <div className="flex-1 relative">
               <Input
                 value={flashcard.term || ''}
                 onChange={(e) => updateFlashcard(index, 'term', e.target.value)}
@@ -234,12 +250,13 @@ export default function EditFlashcards({ setId, initialFlashcards }: EditFlashca
                   }
                 }}
                 onFocus={() => {
+                  setAutocomplete(null);
+                  setFocusedTerm(flashcard.id);
                   emitFlashcardLock(flashcard.id, 'system')
                 }}
                 onBlur={() => {
                   // Add a small delay to allow button click to register
                   setTimeout(() => {
-                    setFocusedDefinition(null);
                     emitFlashcardUnlock(flashcard.id, 'system')
                   }, 100);
                 }}
@@ -259,13 +276,27 @@ export default function EditFlashcards({ setId, initialFlashcards }: EditFlashca
                 }}
                 disabled={lockedFlashcards.includes(flashcard.id)}
               />
+              {autocomplete && flashcard.id === focusedTerm && (
+                <Card className="absolute top-full left-0 right-0 p-2 bg-white text-xs rounded-md z-30 flex flex-row items-center gap-2">
+                <Bot className="h-4 w-4" />
+                <div className="flex-1">{autocomplete}</div>
+                <Button size="icon" onClick={() => {
+                  updateFlashcard(index, 'term', autocomplete);
+                  setAutocomplete(null);
+                  setFocusedTerm(null);
+                }}>
+                  <Check className="h-2 w-2" />
+                </Button>
+              </Card>
+              )}
+              </div>
               <div className="relative flex-1">
               <Input
                 value={flashcard.definition || ''}
                 onChange={(e) => updateFlashcard(index, 'definition', e.target.value)}
                 placeholder="Definition"
                 onFocus={() => {
-                  console.log('focusing on definition', flashcard.id);
+                  setAutocomplete(null);
                   setFocusedDefinition(flashcard.id);
                   emitFlashcardLock(flashcard.id, 'system')
                 }}
@@ -279,7 +310,6 @@ export default function EditFlashcards({ setId, initialFlashcards }: EditFlashca
                     updateFlashcard(index, 'definition', autocomplete);
                     setAutocomplete(null);
                     setFocusedDefinition(null);
-                    emitFlashcardUnlock(flashcard.id, 'system')
                   }}>
                     <Check className="h-2 w-2" />
                   </Button>

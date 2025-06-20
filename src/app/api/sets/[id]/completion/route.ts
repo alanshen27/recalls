@@ -10,9 +10,9 @@ const client = new openai({
 export async function POST(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
 
-  const { term } = await request.json();
+  const { word, type } = await request.json();
 
-  if (!term) {
+  if (!type) {
     return NextResponse.json({ error: "Term is required" }, { status: 400 });
   }
 
@@ -41,11 +41,15 @@ export async function POST(request: NextRequest, { params }: { params: Promise<{
     messages: [
       {
         role: 'system',
-        content: `Complete the following term to its definition following the style given here: ${termValuePairs.join('\n')}`
+        content: `Complete the following term to its definition or definition to its term following the style given here: ${termValuePairs.join('\n')}`
+      },
+      {
+        role: 'system',
+        content: `You are an helpful system that helps autocomplete flashcards.`
       },
       {
         role: 'user',
-        content: `Give me a definition for the term: ${term}. In your output only include the definition, no other text.`
+        content: `${type =='term' ? `${word || '[not provided]'}:_____` : `_____:${word || '[not provided]'}`}. Only return the word / sentence that should be in the blank. No colons, don't do definition:term only term or definition depending on where the blank is. Please refer to the style and language and vernacular of the provided examples. If your filling a term, don't repeat any of the terms provided above.`,
       }
     ]
   });
