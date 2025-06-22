@@ -101,7 +101,50 @@ export async function GET(
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
-    return NextResponse.json(set);
+    const studyingEntry = await prisma.studyingSet.findUnique({
+      where: {
+        flashcardSetId_userId: {
+          flashcardSetId: id,
+          userId: session.user.id,
+        },
+      },
+    });
+
+    const aggregateRating = await prisma.rating.aggregate({
+      where: {
+        flashcardSetId: id,
+      },
+      _avg: {
+        rating: true,
+      },
+      _count: {
+        rating: true,
+      },
+    });
+
+    const userRating = await prisma.rating.findUnique({
+      where: {
+        flashcardSetId_userId: {
+          flashcardSetId: id,
+          userId: session.user.id,
+        },
+      },
+      select: {
+        rating: true,
+      }
+    })
+
+    const responseData = {
+      ...set,
+      isStudying: !!studyingEntry,
+      rating: {
+        average: aggregateRating._avg.rating || 0,
+        count: aggregateRating._count.rating,
+        userRating: userRating?.rating || 0,
+      },
+    };
+
+    return NextResponse.json(responseData);
   } catch (error) {
     console.error('Error fetching set:', error);
     return new NextResponse('Internal Server Error', { status: 500 });

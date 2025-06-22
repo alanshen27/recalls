@@ -1,6 +1,7 @@
 import { useState, KeyboardEvent } from 'react';
 import { X } from 'lucide-react';
 import { Input } from './input';
+import { cn } from '@/lib/utils';
 
 interface TagInputProps {
   tags: string[];
@@ -10,6 +11,7 @@ interface TagInputProps {
 
 export function TagInput({ tags, onChange, placeholder = 'Add tags...' }: TagInputProps) {
   const [inputValue, setInputValue] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Enter' && inputValue.trim()) {
@@ -29,8 +31,8 @@ export function TagInput({ tags, onChange, placeholder = 'Add tags...' }: TagInp
   };
 
   return (
-    <div className="space-y-1">
-      <div className="flex flex-wrap gap-1 p-1.5 border rounded-md bg-background">
+    <div className="space-y-1" onFocus={() => setIsFocused(true)} onBlur={() => setIsFocused(false)}>
+      <div className={cn("flex flex-wrap gap-1 p-1.5 border rounded-md bg-background", isFocused && "border-primary")}>
         {tags.map((tag, index) => (
           <span
             key={index}

@@ -2,71 +2,166 @@ import { getServerSession } from "next-auth/next";
 import { authOptions } from "@/lib/auth";
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { FlashcardSet } from "@prisma/client";
 
-export async function GET(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions);
-    
-    if (!session?.user?.id) {
-      return NextResponse.json(
-        { error: "Unauthorized" },
-        { status: 401 }
-      );
-    }
+async function getSets(
+  type: 'all' | 'mine' | 'shared' | 'studying',
+  userId?: string
+) {
+  let sets: FlashcardSet[] = [];
 
-    const url = new URL(request.url);
-    const type = url.searchParams.get("type") || "mine";
-
-    if (type === "shared") {
-      // Get sets that are shared with the user
-      const sharedSets = await prisma.sharedSet.findMany({
-        where: {
-          sharedWithId: session.user.id
+  if (type === 'all') {
+    sets = await prisma.flashcardSet.findMany({
+      where: { public: true },
+      include: {
+        flashcards: true,
+        owner: { select: { name: true, email: true, image: true } },
+      },
+      orderBy: { updatedAt: 'desc' },
+    });
+  } else if (userId) {
+    if (type === 'mine') {
+      sets = await prisma.flashcardSet.findMany({
+        where: { ownerId: userId },
+        include: {
+          flashcards: true,
+          owner: { select: { name: true, email: true, image: true } },
         },
+        orderBy: { updatedAt: 'desc' },
+      });
+    } else if (type === 'shared') {
+      const sharedSets = await prisma.sharedSet.findMany({
+        where: { sharedWithId: userId },
         include: {
           flashcardSet: {
             include: {
               flashcards: true,
-              owner: {
-                select: {
-                  name: true,
-                  email: true,
-                  image: true
-                }
-              }
-            }
-          }
+              owner: { select: { name: true, email: true, image: true } },
+            },
+          },
         },
-        orderBy: {
-          createdAt: 'desc'
-        }
+        orderBy: { createdAt: 'desc' },
       });
-
-      // Transform the data to match the expected format
-      const sets = sharedSets.map(shared => ({
-        ...shared.flashcardSet,
-        owner: shared.flashcardSet.owner
-      }));
-
-      return NextResponse.json(sets);
-    } else {
-      // "mine": sets owned by the user
-      const sets = await prisma.flashcardSet.findMany({
-        where: { ownerId: session.user.id },
+      sets = sharedSets.map((s) => s.flashcardSet);
+    } else if (type === 'studying') {
+      const studyingSets = await prisma.studyingSet.findMany({
+        where: { userId: userId },
         include: {
-          flashcards: true,
-          owner: {
-            select: {
-              name: true,
-              email: true,
-              image: true
-            }
-          }
+          flashcardSet: {
+            include: {
+              flashcards: true,
+              owner: { select: { name: true, email: true, image: true } },
+            },
+          },
         },
-        orderBy: { updatedAt: 'desc' }
+        orderBy: { createdAt: 'desc' },
       });
-      return NextResponse.json(sets);
+      sets = studyingSets.map((s) => s.flashcardSet);
     }
+  }
+
+  const setIds = sets.map(s => s.id);
+  const ratings = await prisma.rating.groupBy({
+    by: ['flashcardSetId'],
+    where: {
+      flashcardSetId: {
+        in: setIds,
+      },
+    },
+    _avg: {
+      rating: true,
+    },
+    _count: {
+      rating: true,
+    },
+  });
+
+  const ratingsMap = new Map(ratings.map(r => [r.flashcardSetId, {
+    average: r._avg.rating,
+    count: r._count.rating,
+  }]));
+
+  const setsWithRatings = sets.map(set => ({
+    ...set,
+    rating: ratingsMap.get(set.id) || { average: 0, count: 0 },
+  }));
+
+  if (!userId) {
+    return { sets: setsWithRatings.map(set => ({ ...set, isStudying: false })) };
+  }
+
+  const studyingSetIds = (
+    await prisma.studyingSet.findMany({
+      where: { userId },
+      select: { flashcardSetId: true },
+    })
+  ).map((s) => s.flashcardSetId);
+
+  const processedSets = setsWithRatings.map((set) => ({
+    ...set,
+    isStudying: studyingSetIds.includes(set.id),
+  }));
+
+  if (type === 'mine') {
+    const studyingSets = await prisma.studyingSet.findMany({
+      where: { 
+        userId: userId,
+        // Exclude sets owned by the user
+        flashcardSet: {
+          ownerId: {
+            not: userId,
+          },
+        },
+      },
+      include: {
+        flashcardSet: {
+          include: {
+            flashcards: true,
+            owner: { select: { name: true, email: true, image: true } },
+          },
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+    
+    const studyingFlashcardSets = studyingSets.map((s) => ({
+      ...s.flashcardSet,
+      isStudying: true,
+    }));
+
+    return {
+      sets: processedSets,
+      studying: studyingFlashcardSets,
+    };
+  }
+
+  return { sets: processedSets };
+}
+
+export async function GET(request: NextRequest) {
+  try {
+    const url = new URL(request.url);
+    const type = (url.searchParams.get("type") || "all") as 'all' | 'mine' | 'shared' | 'studying';
+
+    if (type === 'all') {
+      const data = await getSets('all');
+      return NextResponse.json(data);
+    }
+    
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id) {
+      // For 'mine', 'shared', 'studying', user must be logged in.
+      // We can return a 401 or an empty array.
+      // Let's return empty arrays to avoid errors on the frontend for now.
+      if (type === 'mine') {
+        return NextResponse.json({ sets: [], studying: [] });
+      }
+      return NextResponse.json({ sets: [] });
+    }
+
+    const data = await getSets(type, session.user.id);
+    return NextResponse.json(data);
+
   } catch (error) {
     console.error('Error in GET /api/sets:', error);
     return NextResponse.json(
@@ -87,7 +182,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { title, description, labels } = await request.json();
+    const { title, description, labels, public: isPublic } = await request.json();
 
     if (!title) {
       return NextResponse.json(
@@ -101,6 +196,7 @@ export async function POST(request: NextRequest) {
         title,
         description: description || null,
         labels: labels || null,
+        public: isPublic || false,
         ownerId: session.user.id,
       },
       include: {

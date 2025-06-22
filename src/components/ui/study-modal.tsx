@@ -24,6 +24,7 @@ interface StudyOptions {
   mode: 'term' | 'definition' | 'both';
   shuffle: boolean;
   repeat: boolean;
+  studyStyle: 'multipleChoice' | 'typed' | 'both';
 }
 
 export function StudyModal({ isOpen, onClose, onStart, maxCards }: StudyModalProps) {
@@ -31,6 +32,7 @@ export function StudyModal({ isOpen, onClose, onStart, maxCards }: StudyModalPro
   const [mode, setMode] = useState<'term' | 'definition' | 'both'>('both');
   const [shuffle, setShuffle] = useState(true);
   const [repeat, setRepeat] = useState(true);
+  const [studyStyle, setStudyStyle] = useState<'multipleChoice' | 'typed' | 'both'>('both');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
@@ -38,7 +40,8 @@ export function StudyModal({ isOpen, onClose, onStart, maxCards }: StudyModalPro
       count,
       mode,
       shuffle,
-      repeat
+      repeat,
+      studyStyle,
     });
   };
 
@@ -80,6 +83,22 @@ export function StudyModal({ isOpen, onClose, onStart, maxCards }: StudyModalPro
               </div>
 
               <div className="flex items-center justify-between">
+                <Label htmlFor="studyStyle" className="text-sm text-muted-foreground">
+                  Study Style
+                </Label>
+                <Select value={studyStyle} onValueChange={(value: 'multipleChoice' | 'typed' | 'both') => setStudyStyle(value)}>
+                  <SelectTrigger className="w-[180px]">
+                    <SelectValue placeholder="Select style" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="multipleChoice">Multiple Choice</SelectItem>
+                    <SelectItem value="typed">Typed</SelectItem>
+                    <SelectItem value="both">Both</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="flex items-center justify-between">
                 <Label htmlFor="shuffle" className="text-sm text-muted-foreground">
                   Shuffle cards
                 </Label>
@@ -103,7 +122,10 @@ export function StudyModal({ isOpen, onClose, onStart, maxCards }: StudyModalPro
             </div>
 
             <p className="text-sm text-muted-foreground">
-              Maximum {maxCards} terms available
+              {maxCards === 0 
+                ? 'No complete flashcards available' 
+                : `Maximum ${maxCards} complete flashcards available`
+              }
             </p>
           </div>
 
@@ -111,7 +133,9 @@ export function StudyModal({ isOpen, onClose, onStart, maxCards }: StudyModalPro
             <Button type="button" variant="outline" onClick={onClose}>
               Cancel
             </Button>
-            <Button type="submit">Start Studying</Button>
+            <Button type="submit" disabled={maxCards === 0}>
+              Start Studying
+            </Button>
           </DialogFooter>
         </form>
       </DialogContent>

@@ -10,14 +10,16 @@ import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { Loading } from "@/components/ui/loading";
 
-interface CardPerformance {
+interface StudyCard {
   card: Flashcard;
-  attempts: number;
-  correct: number;
-  userAnswer: string;
+  flashcardId: string;
   isMultipleChoice: boolean;
-  selectedOption?: string;
   testTerm: boolean;
+  multipleChoiceOptions?: string[];
+  userAnswer: string;
+  isCorrect: boolean;
+  isAnswered: boolean;
+  attempts: number;
 }
 
 interface StudyOptions {
@@ -25,27 +27,35 @@ interface StudyOptions {
   mode: 'term' | 'definition' | 'both';
   shuffle: boolean;
   repeat: boolean;
+  studyStyle: 'multipleChoice' | 'typed' | 'both';
 }
+
+type StudyState = 'modal' | 'studying' | 'completed';
 
 export default function StudyPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
   const { id } = use(params);
+  
+  // Data state
   const [flashcards, setFlashcards] = useState<Flashcard[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isModalOpen, setIsModalOpen] = useState(true);
-  const [studyCards, setStudyCards] = useState<CardPerformance[]>([]);
+  
+  // Study state
+  const [studyState, setStudyState] = useState<StudyState>('modal');
+  const [studyCards, setStudyCards] = useState<StudyCard[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
-  const [userAnswer, setUserAnswer] = useState('');
-  const [showFeedback, setShowFeedback] = useState(false);
-  const [isCorrect, setIsCorrect] = useState(false);
-  const [multipleChoiceOptions, setMultipleChoiceOptions] = useState<string[]>([]);
   const [studyOptions, setStudyOptions] = useState<StudyOptions>({
     count: 10,
     mode: 'both',
     shuffle: true,
-    repeat: true
+    repeat: true,
+    studyStyle: 'both'
   });
-  
+
+  // Current card state
+  const [currentAnswer, setCurrentAnswer] = useState('');
+
+  // Fetch flashcards on mount
   useEffect(() => {
     const fetchFlashcards = async () => {
       try {
@@ -63,151 +73,182 @@ export default function StudyPage({ params }: { params: Promise<{ id: string }> 
     fetchFlashcards();
   }, [id]);
 
+  // Generate multiple choice options
   const generateMultipleChoiceOptions = (correctAnswer: string, allAnswers: string[]) => {
-    // Get 3 random incorrect answers
     const incorrectOptions = allAnswers
-      .filter(def => def !== correctAnswer)
+      .filter(answer => answer !== correctAnswer)
       .sort(() => Math.random() - 0.5)
       .slice(0, 3);
     
-    // Combine with correct answer and shuffle
-    const options = [...incorrectOptions, correctAnswer]
+    return [...incorrectOptions, correctAnswer]
       .sort(() => Math.random() - 0.5);
-    
-    return options;
   };
 
+  // Start study session
   const handleStartStudy = (count: number, options: StudyOptions) => {
     setStudyOptions(options);
-    let selectedCards = [...flashcards];
+    
+    // Select and prepare cards - only include cards with both term and definition
+    let selectedCards = flashcards.filter(card => card.term && card.definition);
+    
+    if (selectedCards.length === 0) {
+      // No valid cards to study
+      alert('No flashcards with both term and definition found. Please add complete flashcards to this set.');
+      return;
+    }
+    
     if (options.shuffle) {
       selectedCards = selectedCards.sort(() => Math.random() - 0.5);
     }
     selectedCards = selectedCards.slice(0, count);
     
-    const allAnswers = flashcards.map(card => 
-      options.mode === 'term' ? card.definition! : card.term!
-    ).filter(Boolean);
-    
-    setStudyCards(selectedCards.map(card => {
-      const isMultipleChoice = Math.random() < 0.5; // 50% chance for multiple choice
+    // Create study cards
+    const preparedCards: StudyCard[] = selectedCards.map(card => {
+      const isMultipleChoice = 
+        options.studyStyle === 'multipleChoice' ? true :
+        options.studyStyle === 'typed' ? false :
+        Math.random() < 0.5;
+
       const testTerm = options.mode === 'both' 
         ? Math.random() < 0.5 
         : options.mode === 'term';
+
+      // If asking for term, correct answer is the term, choices are definitions
+      // If asking for definition, correct answer is the definition, choices are terms
+      const correctAnswer = testTerm ? card.term! : card.definition!;
+      
+      // For multiple choice, we need to get all possible choices from other cards
+      // When asking for term, choices should be definitions from other cards
+      // When asking for definition, choices should be terms from other cards
+      let multipleChoiceOptions: string[] | undefined;
+      
+      if (isMultipleChoice) {
+        const allChoices = flashcards.map(otherCard => 
+          testTerm ? otherCard.definition! : otherCard.term!
+        ).filter(Boolean);
+        
+        multipleChoiceOptions = generateMultipleChoiceOptions(correctAnswer, allChoices);
+      }
       
       return {
         card,
-        attempts: 0,
-        correct: 0,
-        userAnswer: '',
+        flashcardId: card.id,
         isMultipleChoice,
-        testTerm
+        testTerm,
+        multipleChoiceOptions,
+        userAnswer: '',
+        isCorrect: false,
+        isAnswered: false,
+        attempts: 0,
       };
-    }));
+    });
     
-    // Generate multiple choice options for the first card
-    const firstCard = selectedCards[0];
-    const firstCardAnswer = studyCards[0]?.testTerm 
-      ? firstCard.definition! 
-      : firstCard.term!;
-    setMultipleChoiceOptions(generateMultipleChoiceOptions(firstCardAnswer, allAnswers));
-    
+    setStudyCards(preparedCards);
     setCurrentIndex(0);
-    setUserAnswer('');
-    setShowFeedback(false);
-    setIsModalOpen(false);
+    setCurrentAnswer('');
+    setStudyState('studying');
   };
 
-  const checkAnswer = (selectedAnswer?: string) => {
+  // Submit answer for current card
+  const submitAnswer = (answer: string) => {
+    if (studyCards[currentIndex].isAnswered) return;
+
     const currentCard = studyCards[currentIndex];
-    const answerToCheck = selectedAnswer || userAnswer;
-    const normalizedUserAnswer = answerToCheck.trim().toLowerCase();
+    const normalizedUserAnswer = answer.trim().toLowerCase();
+    
+    // The correct answer is what the user should provide
+    // If asking for term, correct answer is the term
+    // If asking for definition, correct answer is the definition
     const correctAnswer = currentCard.testTerm
-      ? currentCard.card.definition!.trim().toLowerCase()
-      : currentCard.card.term!.trim().toLowerCase();
-    const isAnswerCorrect = normalizedUserAnswer === correctAnswer;
+      ? currentCard.card.term!.trim().toLowerCase()
+      : currentCard.card.definition!.trim().toLowerCase();
+    
+    const isCorrect = normalizedUserAnswer === correctAnswer;
 
     setStudyCards(prev => {
       const newCards = [...prev];
-      const currentCard = newCards[currentIndex];
-      currentCard.attempts++;
-      if (isAnswerCorrect) {
-        currentCard.correct++;
-      }
-      currentCard.userAnswer = answerToCheck;
-      currentCard.selectedOption = selectedAnswer;
+      newCards[currentIndex] = {
+        ...newCards[currentIndex],
+        userAnswer: answer,
+        isCorrect,
+        isAnswered: true,
+        attempts: newCards[currentIndex].attempts + 1,
+      };
       return newCards;
     });
 
-    setIsCorrect(isAnswerCorrect);
-    setShowFeedback(true);
-    if (selectedAnswer) {
-      setUserAnswer(selectedAnswer);
-    }
+    setCurrentAnswer(answer);
   };
 
-  const handleNext = () => {
-    // If all cards have been answered correctly at least once, end the session
-    const allCorrect = studyCards.every(card => card.correct > 0);
-    if (allCorrect) {
-      const results = studyCards.map(card => ({
-        term: card.card.term,
-        definition: card.card.definition,
-        userAnswer: card.userAnswer,
-        attempts: card.attempts,
-        correct: card.correct,
-        accuracy: Math.round((card.correct / card.attempts) * 100)
-      }));
-      router.push(`/sets/${id}/study/result?results=${encodeURIComponent(JSON.stringify(results))}`);
+  // Move to next card
+  const nextCard = () => {
+    const nextIndex = currentIndex + 1;
+    
+    if (nextIndex >= studyCards.length) {
+      // Study session complete
+      completeStudySession();
       return;
     }
 
-    // reset the selectedOption for the current card
-    setStudyCards(prev => {
-      const newCards = [...prev];
-      newCards[currentIndex].selectedOption = undefined;
-      return newCards;
-    });
+    setCurrentIndex(nextIndex);
+    setCurrentAnswer('');
+  };
 
-    // Move to next card or back to the beginning
-    if (currentIndex < studyCards.length - 1) {
-      setCurrentIndex(prev => prev + 1);
-    } else if (studyOptions.repeat) {
-      // If we've gone through all cards and repeat is enabled, start over with the ones that haven't been answered correctly
-      const remainingCards = studyCards.filter(card => card.correct === 0);
-      if (remainingCards.length > 0) {
-        setCurrentIndex(studyCards.indexOf(remainingCards[0]));
+  // Complete study session and save results
+  const completeStudySession = async () => {
+    const results = studyCards.map(card => ({
+      flashcardId: card.flashcardId,
+      term: card.card.term,
+      definition: card.card.definition,
+      userAnswer: card.userAnswer,
+      attempts: card.attempts,
+      correct: card.isCorrect ? 1 : 0,
+      accuracy: card.isCorrect ? 100 : 0,
+      isCorrect: card.isCorrect,
+      testTerm: card.testTerm,
+      isMultipleChoice: card.isMultipleChoice,
+      selectedOption: card.isMultipleChoice ? card.userAnswer : undefined,
+    }));
+
+    try {
+      const response = await fetch(`/api/sets/${id}/study/results`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studyOptions, results }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to save study results');
+      }
+
+      console.log('Study results saved successfully');
+    } catch (error) {
+      console.error('Error saving study results:', error);
+    }
+
+    // Navigate to results page
+    router.push(`/sets/${id}/study/result?results=${encodeURIComponent(JSON.stringify(results))}`);
+  };
+
+  // Handle keyboard input
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter') {
+      const currentCard = studyCards[currentIndex];
+      
+      if (!currentCard.isAnswered && currentAnswer.trim()) {
+        submitAnswer(currentAnswer);
+      } else if (currentCard.isAnswered) {
+        nextCard();
       }
     }
-
-    // Generate multiple choice options for the next card if it's multiple choice
-    const nextCard = studyCards[currentIndex + 1];
-    if (nextCard?.isMultipleChoice) {
-      const allAnswers = flashcards.map(card => 
-        studyOptions.mode === 'term' ? card.definition! : card.term!
-      ).filter(Boolean);
-      const nextCardAnswer = studyCards[currentIndex + 1]?.testTerm 
-        ? studyCards[currentIndex + 1].card.definition! 
-        : studyCards[currentIndex + 1].card.term!;
-      setMultipleChoiceOptions(generateMultipleChoiceOptions(nextCardAnswer, allAnswers));
-    }
-
-    setUserAnswer('');
-    setShowFeedback(false);
   };
 
-  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter' && !showFeedback) {
-      checkAnswer();
-    } else if (e.key === 'Enter' && showFeedback) {
-      handleNext();
-    }
-  };
-
+  // Loading state
   if (isLoading) {
     return <Loading />;
   }
 
+  // No flashcards state
   if (flashcards.length === 0) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -223,137 +264,230 @@ export default function StudyPage({ params }: { params: Promise<{ id: string }> 
     );
   }
 
-  const masteredCards = studyCards.filter(card => card.correct > 0).length;
-  const progress = (masteredCards / studyCards.length) * 100;
+  // Check if there are any valid cards for studying
+  const validCards = flashcards.filter(card => card.term && card.definition);
+  if (validCards.length === 0) {
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Card>
+          <CardContent className="pt-6 text-center">
+            <p className="text-muted-foreground mb-4">
+              No flashcards with both term and definition found. Please add complete flashcards to this set.
+            </p>
+            <Button onClick={() => router.push(`/sets/${id}`)}>
+              Back to Set
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Study modal
+  if (studyState === 'modal') {
+    const validCards = flashcards.filter(card => card.term && card.definition);
+    
+    return (
+      <StudyModal
+        isOpen={true}
+        onClose={() => router.push(`/sets/${id}`)}
+        onStart={handleStartStudy}
+        maxCards={validCards.length}
+      />
+    );
+  }
+
+  // Study session
   const currentCard = studyCards[currentIndex];
+  const masteredCards = studyCards.filter(card => card.isCorrect).length;
+  const progress = (masteredCards / studyCards.length) * 100;
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <StudyModal
-        isOpen={isModalOpen}
-        onClose={() => router.push(`/sets/${id}`)}
-        onStart={handleStartStudy}
-        maxCards={flashcards.length}
-      />
-
-      {studyCards.length > 0 && (
-        <div className="max-w-2xl mx-auto space-y-8">
-          <div className="space-y-4">
-            <div className="flex justify-between text-sm text-muted-foreground">
-              <span>Progress</span>
-              <span>{masteredCards} of {studyCards.length} cards mastered</span>
-            </div>
-            <Progress value={progress} className="h-2" />
-            <div className="text-center">
-              <p className="text-sm text-muted-foreground">
-                Current Card: {currentIndex + 1} of {studyCards.length}
-              </p>
-            </div>
+      <div className="max-w-2xl mx-auto space-y-8">
+        {/* Progress Header */}
+        <div className="space-y-4">
+          <div className="flex justify-between text-sm text-muted-foreground">
+            <span>Progress</span>
+            <span>{masteredCards} of {studyCards.length} cards mastered</span>
           </div>
-
-          <Card>
-            <CardContent className="pt-6">
-              <div className="space-y-6">
-                <p className="text-lg font-medium">
-                  {studyCards[currentIndex].testTerm 
-                    ? studyCards[currentIndex].card.definition 
-                    : studyCards[currentIndex].card.term}
-                </p>
-                <div className="text-sm text-muted-foreground">
-                  {studyCards[currentIndex].testTerm 
-                    ? 'Enter the term' 
-                    : 'Enter the definition'}
-                </div>
-                <div className="space-y-4">
-                  {studyCards[currentIndex].isMultipleChoice ? (
-                    <div className="grid grid-cols-2 gap-4">
-                      {multipleChoiceOptions.map((option, index) => {
-                        const isSelected = userAnswer === option;
-                        const correctAnswer = studyCards[currentIndex].testTerm 
-                          ? studyCards[currentIndex].card.definition 
-                          : studyCards[currentIndex].card.term;
-                        const isCorrectAnswer = option === correctAnswer;
-                        const showFeedback = studyCards[currentIndex].selectedOption === option;
-                        
-                        const buttonVariant = "outline" as const;
-                        let buttonClassName = "h-auto py-4 px-4 text-base whitespace-normal text-left";
-                        
-                        if (showFeedback) {
-                          if (isCorrectAnswer) {
-                            buttonClassName += " border-green-500 bg-green-100 text-green-500 hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-950";
-                          } else {
-                            buttonClassName += " border-red-500 bg-red-100 text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950";
-                          }
-                        } else if (isSelected) {
-                          buttonClassName += " border-primary";
-                        }
-
-                        return (
-                          <Button
-                            key={index}
-                            variant={buttonVariant}
-                            onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                              e.preventDefault();
-                              if (!showFeedback) {
-                                checkAnswer(option);
-                              }
-                            }}
-                            disabled={showFeedback}
-                            className={buttonClassName}
-                          >
-                            {option}
-                          </Button>
-                        );
-                      })}
-                    </div>
-                  ) : (
-                    <Input
-                      value={userAnswer}
-                      onChange={(e) => setUserAnswer(e.target.value)}
-                      onKeyDown={handleKeyDown}
-                      placeholder={studyCards[currentIndex].testTerm 
-                        ? "Type the term..." 
-                        : "Type the definition..."}
-                      disabled={showFeedback}
-                      className="text-base"
-                    />
-                  )}
-                  {showFeedback && !studyCards[currentIndex].isMultipleChoice && (
-                    <div className={`p-4 rounded-md ${isCorrect ? 'bg-green-50 dark:bg-green-950' : 'bg-red-50 dark:bg-red-950'}`}>
-                      <p className="font-medium mb-2">
-                        {isCorrect ? 'Correct!' : 'Incorrect'}
-                      </p>
-                      <p className="text-muted-foreground">
-                        Correct answer: {studyCards[currentIndex].testTerm 
-                          ? studyCards[currentIndex].card.term 
-                          : studyCards[currentIndex].card.definition}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="flex justify-center gap-4">
-            {!showFeedback ? (
-              <Button 
-                onClick={(e: React.MouseEvent<HTMLButtonElement>) => {
-                  e.preventDefault();
-                  checkAnswer();
-                }}
-                disabled={!userAnswer}
-              >
-                Check Answer
-              </Button>
-            ) : (
-              <Button onClick={handleNext}>
-                Next Card
-              </Button>
-            )}
+          <Progress value={progress} className="h-2" />
+          <div className="text-center">
+            <p className="text-sm text-muted-foreground">
+              Card {currentIndex + 1} of {studyCards.length}
+            </p>
           </div>
         </div>
-      )}
+
+        {/* Question Card */}
+        <Card>
+          <CardContent className="pt-6">
+            <div className="space-y-6">
+              {/* Question */}
+              <div>
+                <p className="text-lg font-medium">
+                  {currentCard.testTerm 
+                    ? currentCard.card.definition 
+                    : currentCard.card.term}
+                </p>
+                <p className="text-sm text-muted-foreground mt-2">
+                  {currentCard.testTerm 
+                    ? 'Enter the term' 
+                    : 'Enter the definition'}
+                </p>
+              </div>
+
+              {/* Answer Input */}
+              <div className="space-y-4">
+                {currentCard.isMultipleChoice ? (
+                  <MultipleChoiceOptions
+                    options={currentCard.multipleChoiceOptions!}
+                    selectedAnswer={currentAnswer}
+                    correctAnswer={currentCard.testTerm 
+                      ? currentCard.card.term! 
+                      : currentCard.card.definition!}
+                    isAnswered={currentCard.isAnswered}
+                    onSelect={submitAnswer}
+                  />
+                ) : (
+                  <TypedAnswer
+                    value={currentAnswer}
+                    onChange={setCurrentAnswer}
+                    onKeyDown={handleKeyDown}
+                    placeholder={currentCard.testTerm 
+                      ? "Type the term..." 
+                      : "Type the definition..."}
+                    disabled={currentCard.isAnswered}
+                  />
+                )}
+
+                {/* Feedback */}
+                {currentCard.isAnswered && (
+                  <AnswerFeedback
+                    isCorrect={currentCard.isCorrect}
+                    userAnswer={currentCard.userAnswer}
+                    correctAnswer={currentCard.testTerm 
+                      ? currentCard.card.term! 
+                      : currentCard.card.definition!}
+                  />
+                )}
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Action Buttons */}
+        <div className="flex justify-center gap-4">
+          {!currentCard.isAnswered ? (
+            <Button 
+              onClick={() => submitAnswer(currentAnswer)}
+              disabled={!currentAnswer.trim()}
+            >
+              Check Answer
+            </Button>
+          ) : (
+            <Button onClick={nextCard}>
+              {currentIndex === studyCards.length - 1 ? 'Finish' : 'Next Card'}
+            </Button>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// Multiple Choice Component
+function MultipleChoiceOptions({ 
+  options, 
+  selectedAnswer, 
+  correctAnswer, 
+  isAnswered, 
+  onSelect 
+}: {
+  options: string[];
+  selectedAnswer: string;
+  correctAnswer: string;
+  isAnswered: boolean;
+  onSelect: (answer: string) => void;
+}) {
+  return (
+    <div className="grid grid-cols-2 gap-4">
+      {options.map((option, index) => {
+        const isSelected = selectedAnswer === option;
+        const isCorrectAnswer = option === correctAnswer;
+        const showFeedback = isAnswered && (isSelected || isCorrectAnswer);
+        
+        let buttonClassName = "h-auto py-4 px-4 text-base whitespace-normal text-left";
+        
+        if (showFeedback) {
+          if (isCorrectAnswer) {
+            buttonClassName += " border-green-500 bg-green-100 text-green-500 hover:bg-green-50 hover:text-green-600 dark:hover:bg-green-950";
+          } else if (isSelected) {
+            buttonClassName += " border-red-500 bg-red-100 text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950";
+          }
+        } else if (isSelected) {
+          buttonClassName += " border-primary";
+        }
+
+        return (
+          <Button
+            key={index}
+            variant="outline"
+            onClick={() => !isAnswered && onSelect(option)}
+            disabled={isAnswered}
+            className={buttonClassName}
+          >
+            {option}
+          </Button>
+        );
+      })}
+    </div>
+  );
+}
+
+// Typed Answer Component
+function TypedAnswer({ 
+  value, 
+  onChange, 
+  onKeyDown, 
+  placeholder, 
+  disabled 
+}: {
+  value: string;
+  onChange: (value: string) => void;
+  onKeyDown: (e: React.KeyboardEvent<HTMLInputElement>) => void;
+  placeholder: string;
+  disabled: boolean;
+}) {
+  return (
+    <Input
+      value={value}
+      onChange={(e) => onChange(e.target.value)}
+      onKeyDown={onKeyDown}
+      placeholder={placeholder}
+      disabled={disabled}
+      className="text-base"
+    />
+  );
+}
+
+// Answer Feedback Component
+function AnswerFeedback({ 
+  isCorrect, 
+  correctAnswer 
+}: {
+  isCorrect: boolean;
+  userAnswer: string;
+  correctAnswer: string;
+}) {
+  return (
+    <div className={`p-4 rounded-md ${isCorrect ? 'bg-green-50 dark:bg-green-950' : 'bg-red-50 dark:bg-red-950'}`}>
+      <p className="font-medium mb-2">
+        {isCorrect ? 'Correct!' : 'Incorrect'}
+      </p>
+      <p className="text-muted-foreground">
+        Correct answer: {correctAnswer}
+      </p>
     </div>
   );
 } 

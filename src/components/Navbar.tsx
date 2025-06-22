@@ -13,6 +13,7 @@ import { User } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { NotificationsDropdown } from "@/components/notifications-dropdown";
 
+
 export default function Navbar() {
   const { data: session } = useSession();
   const router = useRouter();
@@ -20,15 +21,16 @@ export default function Navbar() {
     <nav className="border-b bg-white sticky top-0 z-50">
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
-          <Link href="/" className="text-xl font-bold flex flex-row gap-2 items-center">
-            <img src="/logo.png" className="h-6"/>
+          <Link href="/" className="text-xl text-primary font-bold flex flex-row gap-2 items-center">
+            <img src="/logo-ico.png" className="h-8"/>
+            recalls
           </Link>
 
           <div className="flex items-center gap-4">
             {session ? (
               <>
                 <Link href="/sets">
-                  <Button variant="ghost">My Sets</Button>
+                  <Button variant="ghost">Explore</Button>
                 </Link>
                 <Button variant="default" onClick={() => router.push('/sets/new')}>Create Set</Button>
                 <NotificationsDropdown />
