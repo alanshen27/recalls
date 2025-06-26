@@ -22,9 +22,15 @@ export function StreakDisplay({
   averageRetentionRate = 0
 }: StreakDisplayProps) {
   const getStreakColor = (streak: number) => {
-    if (streak >= 7) return "text-red-500";
-    if (streak >= 3) return "text-orange-500";
-    return "text-yellow-500";
+    if (streak >= 7) return "text-red-500 dark:text-red-400";
+    if (streak >= 3) return "text-orange-500 dark:text-orange-400";
+    return "text-yellow-500 dark:text-yellow-400";
+  };
+
+  const getStreakBackground = (streak: number) => {
+    if (streak >= 7) return "bg-red-100 dark:bg-red-950/30";
+    if (streak >= 3) return "bg-orange-100 dark:bg-orange-950/30";
+    return "bg-yellow-100 dark:bg-yellow-950/30";
   };
 
   const getStreakMessage = (streak: number) => {
@@ -123,13 +129,13 @@ export function StreakDisplay({
   const lockedAchievements = achievements.filter(a => !a.unlocked).slice(0, 3);
 
   return (
-    <Card className={cn("bg-gradient-to-r from-orange-50 to-red-50 border-orange-200", className)}>
+    <Card className={cn("bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-950/20 dark:to-red-950/20 border-orange-200 dark:border-orange-800", className)}>
       <CardContent className="p-6">
         <div className="space-y-6">
           {/* Streak Display */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className={cn("p-2 rounded-full", getStreakColor(currentStreak).replace('text-', 'bg-').replace('-500', '-100'))}>
+              <div className={cn("p-2 rounded-full", getStreakBackground(currentStreak))}>
                 <Flame className={cn("h-6 w-6", getStreakColor(currentStreak))} />
               </div>
               <div>
@@ -163,22 +169,22 @@ export function StreakDisplay({
               {unlockedAchievements.slice(0, 3).map((achievement) => {
                 const Icon = achievement.icon;
                 return (
-                  <div key={achievement.id} className="flex items-center gap-3 p-2 rounded-lg bg-white/50 border border-white/20">
+                  <div key={achievement.id} className="flex items-center gap-3 p-2 rounded-lg bg-white/50 dark:bg-white/5 border border-white/20 dark:border-white/10">
                     <div className={cn("p-1.5 rounded-full", {
-                      'bg-green-100': achievement.color === 'green',
-                      'bg-orange-100': achievement.color === 'orange',
-                      'bg-red-100': achievement.color === 'red',
-                      'bg-purple-100': achievement.color === 'purple',
-                      'bg-blue-100': achievement.color === 'blue',
-                      'bg-yellow-100': achievement.color === 'yellow',
+                      'bg-green-100 dark:bg-green-950/50': achievement.color === 'green',
+                      'bg-orange-100 dark:bg-orange-950/50': achievement.color === 'orange',
+                      'bg-red-100 dark:bg-red-950/50': achievement.color === 'red',
+                      'bg-purple-100 dark:bg-purple-950/50': achievement.color === 'purple',
+                      'bg-blue-100 dark:bg-blue-950/50': achievement.color === 'blue',
+                      'bg-yellow-100 dark:bg-yellow-950/50': achievement.color === 'yellow',
                     })}>
                       <Icon className={cn("h-3 w-3", {
-                        'text-green-600': achievement.color === 'green',
-                        'text-orange-600': achievement.color === 'orange',
-                        'text-red-600': achievement.color === 'red',
-                        'text-purple-600': achievement.color === 'purple',
-                        'text-blue-600': achievement.color === 'blue',
-                        'text-yellow-600': achievement.color === 'yellow',
+                        'text-green-600 dark:text-green-400': achievement.color === 'green',
+                        'text-orange-600 dark:text-orange-400': achievement.color === 'orange',
+                        'text-red-600 dark:text-red-400': achievement.color === 'red',
+                        'text-purple-600 dark:text-purple-400': achievement.color === 'purple',
+                        'text-blue-600 dark:text-blue-400': achievement.color === 'blue',
+                        'text-yellow-600 dark:text-yellow-400': achievement.color === 'yellow',
                       })} />
                     </div>
                     <div className="flex-1">
@@ -193,13 +199,13 @@ export function StreakDisplay({
               {lockedAchievements.map((achievement) => {
                 const Icon = achievement.icon;
                 return (
-                  <div key={achievement.id} className="flex items-center gap-3 p-2 rounded-lg bg-gray-100/50 border border-gray-200/20 opacity-60">
-                    <div className="p-1.5 rounded-full bg-gray-200">
-                      <Icon className="h-3 w-3 text-gray-400" />
+                  <div key={achievement.id} className="flex items-center gap-3 p-2 rounded-lg bg-gray-100/50 dark:bg-gray-800/50 border border-gray-200/20 dark:border-gray-700/20 opacity-60">
+                    <div className="p-1.5 rounded-full bg-gray-200 dark:bg-gray-700">
+                      <Icon className="h-3 w-3 text-gray-400 dark:text-gray-500" />
                     </div>
                     <div className="flex-1">
-                      <h4 className="text-sm font-medium text-gray-500">{achievement.title}</h4>
-                      <p className="text-xs text-gray-400">{achievement.description}</p>
+                      <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">{achievement.title}</h4>
+                      <p className="text-xs text-gray-400 dark:text-gray-500">{achievement.description}</p>
                     </div>
                   </div>
                 );

@@ -21,7 +21,7 @@ export default function Navbar() {
   // Don't render until we know the session status to avoid hydration mismatch
   if (status === "loading") {
     return (
-      <nav className="border-b bg-white sticky top-0 z-50">
+      <nav className="border-b bg-background sticky top-0 z-50">
         <div className="container mx-auto px-4">
           <div className="flex h-16 items-center justify-between">
             <Link href="/" className="text-xl text-primary font-bold flex flex-row gap-2 items-center">
@@ -30,9 +30,9 @@ export default function Navbar() {
             </Link>
             <div className="flex items-center gap-6">
               {/* Loading skeleton */}
-              <div className="h-4 w-20 bg-gray-200 rounded animate-pulse"></div>
-              <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
-              <div className="h-9 w-24 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-4 w-20 bg-muted rounded animate-pulse"></div>
+              <div className="h-4 w-16 bg-muted rounded animate-pulse"></div>
+              <div className="h-9 w-24 bg-muted rounded animate-pulse"></div>
             </div>
           </div>
         </div>
@@ -41,7 +41,7 @@ export default function Navbar() {
   }
 
   return (
-    <nav className="border-b bg-white sticky top-0 z-50">
+    <nav className="border-b bg-background sticky top-0 z-50">
       <div className="container mx-auto px-4">
         <div className="flex h-16 items-center justify-between">
           <Link href="/" className="text-xl text-primary font-bold flex flex-row gap-2 items-center">

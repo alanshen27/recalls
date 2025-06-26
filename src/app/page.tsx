@@ -174,7 +174,7 @@ export default function LandingPage() {
       </section>
 
       {/* How It Works Section */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-muted/50 to-background">
+      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-gradient-to-b from-background to-muted/50">
         <div className="max-w-7xl mx-auto">
           <div className="text-center mb-20">
             <h2 className="text-4xl font-bold tracking-tight sm:text-5xl mb-6">
@@ -339,20 +339,19 @@ export default function LandingPage() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-primary text-primary-foreground">
+      <section className="py-24 px-4 sm:px-6 lg:px-8 bg-primary/10 text-primary-foreground">
         <div className="max-w-4xl mx-auto text-center">
-          <h2 className="text-4xl font-bold tracking-tight sm:text-5xl mb-6">
+          <h2 className="text-4xl font-bold tracking-tight sm:text-5xl mb-6 text-primary">
             Ready to Transform Your Learning?
           </h2>
-          <p className="text-xl mb-10 opacity-90 leading-relaxed">
+          <p className="text-xl mb-10 opacity-90 leading-relaxed text-muted-foreground">
             Join 50,000+ students who are already using Recalls to improve their grades, 
             boost retention, and achieve their learning goals
           </p>
           <div className="flex flex-col sm:flex-row justify-center gap-4">
             <Button
-              variant="secondary"
+              className="text-lg px-8 py-6"
               size="lg"
-              className="text-primary text-lg px-8 py-6"
               asChild
             >
               <Link href="/sets">
