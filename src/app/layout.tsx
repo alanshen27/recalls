@@ -8,8 +8,8 @@ import Navbar from '@/components/Navbar';
 const inter = Inter({ subsets: ["latin"] });
 
 export const metadata: Metadata = {
-  title: "Recall - Flashcard Learning",
-  description: "Create and study flashcards efficiently",
+  title: "Recalls - Rethinking learning and memory permanence",
+  description: "Recalls is a platform for creating and studying flashcards efficiently. It's a tool for learners to create and study flashcards efficiently.",
   icons: "/logo-ico.png"
 };
 

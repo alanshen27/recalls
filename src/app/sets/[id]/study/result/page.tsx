@@ -78,7 +78,7 @@ export default function ResultPage({ params }: { params: Promise<{ id: string }>
             Study Again
           </Button>
           <Button onClick={() => router.push(`/sets/${id}`)}>
-            Back to Set
+            Back to set
           </Button>
         </div>
       </div>

@@ -182,7 +182,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const { title, description, labels, public: isPublic } = await request.json();
+    const { title, description, labels, public: isPublic, flashcards } = await request.json();
 
     if (!title) {
       return NextResponse.json(
@@ -198,6 +198,12 @@ export async function POST(request: NextRequest) {
         labels: labels || null,
         public: isPublic || false,
         ownerId: session.user.id,
+        flashcards: flashcards ? {
+          create: flashcards.map((card: { term: string; definition: string }) => ({
+            term: card.term,
+            definition: card.definition,
+          }))
+        } : undefined,
       },
       include: {
         flashcards: true,

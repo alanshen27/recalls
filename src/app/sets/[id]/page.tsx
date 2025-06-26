@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { FlashcardSet, Flashcard, User } from '@prisma/client';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, ChevronLeft, ChevronRight, Edit, BookOpen, ClipboardCheck, Users, X, Bookmark } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Edit, BookOpen, ClipboardCheck, Users, X, Bookmark, Globe, Lock } from "lucide-react";
 import Link from 'next/link';
 import { ShareSetDialog } from "@/components/share-set-dialog";
 import { Loading } from "@/components/ui/loading";
@@ -26,6 +26,7 @@ interface SetWithRelations extends FlashcardSet {
     count: number;
     userRating: number;
   };
+  public: boolean;
 }
 
 export default function SetPage({ params }: { params: Promise<{ id: string }> }) {
@@ -40,21 +41,21 @@ export default function SetPage({ params }: { params: Promise<{ id: string }> })
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sidebarKey, setSidebarKey] = useState(0);
 
-  useEffect(() => {
-    const fetchSet = async () => {
-      try {
-        const response = await fetch(`/api/sets/${id}`);
-        if (!response.ok) throw new Error('Failed to fetch set');
-        const data = await response.json();
-        setSet(data);
-        setIsStudying(data.isStudying);
-      } catch (error) {
-        console.error('Error fetching set:', error);
-      } finally {
-        setIsLoading(false);
-      }
-    };
+  const fetchSet = async () => {
+    try {
+      const response = await fetch(`/api/sets/${id}`);
+      if (!response.ok) throw new Error('Failed to fetch set');
+      const data = await response.json();
+      setSet(data);
+      setIsStudying(data.isStudying);
+    } catch (error) {
+      console.error('Error fetching set:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
+  useEffect(() => {
     fetchSet();
   }, []);
 
@@ -114,6 +115,7 @@ export default function SetPage({ params }: { params: Promise<{ id: string }> })
         throw new Error('Failed to submit rating.');
       }
       toast.success('Your rating has been submitted!');
+      fetchSet();
     } catch (error) {
       console.error(error);
       toast.error('Failed to submit your rating.');
@@ -139,6 +141,7 @@ export default function SetPage({ params }: { params: Promise<{ id: string }> })
       });
 
       toast.success('User removed from shared list');
+      fetchSet();
     } catch (error) {
       console.error('Error removing share:', error);
       toast.error('Failed to remove user from shared list');
@@ -167,17 +170,16 @@ export default function SetPage({ params }: { params: Promise<{ id: string }> })
         <main className="lg:col-span-3">
           <Button
             variant="ghost"
-            className="mb-8"
-            onClick={() => router.back()}
+            onClick={() => router.push('/sets')}
           >
             <ArrowLeft className="mr-2 h-4 w-4" />
             Back to Sets
           </Button>
 
-          <div className="space-y-8">
+          <div className="space-y-6 mt-4">
             <div>
               <div className="flex items-start justify-between">
-                <div className="flex-grow">
+                <div className="flex-grow space-y-3">
                   <h1 className="text-3xl font-bold tracking-tight mb-2">{set.title}</h1>
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <StarRating
@@ -193,6 +195,21 @@ export default function SetPage({ params }: { params: Promise<{ id: string }> })
                   {set.description && (
                     <p className="text-muted-foreground">{set.description}</p>
                   )}
+                  <div className="flex items-center gap-2 mt-3">
+                    <div className="flex items-center gap-2 px-3 py-1 rounded-full text-sm border">
+                      {set.public ? (
+                        <>
+                          <Globe className="h-4 w-4 text-primary" />
+                          <span className="text-primary font-medium">Public</span>
+                        </>
+                      ) : (
+                        <>
+                          <Lock className="h-4 w-4 text-muted-foreground" />
+                          <span className="text-muted-foreground font-medium">Private</span>
+                        </>
+                      )}
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>
@@ -216,7 +233,10 @@ export default function SetPage({ params }: { params: Promise<{ id: string }> })
                   Edit Set
                 </Link>
               </Button>
-              <ShareSetDialog setId={id} title={set.title} />
+              <ShareSetDialog setId={id} title={set.title} onShare={() => {
+                toast.success('Set shared successfully')
+                fetchSet();
+              }} />
               <Button
                 variant="ghost"
                 size="icon"
@@ -263,35 +283,24 @@ export default function SetPage({ params }: { params: Promise<{ id: string }> })
             <Card
               className="cursor-pointer transition-all duration-500 hover:shadow-lg"
               onClick={() => setStudyMode(prev => prev === 'term' ? 'definition' : 'term')}
+              style={{
+                transform: studyMode === 'term' ? 'rotateY(0deg)' : 'rotateY(180deg)',
+                transformStyle: 'preserve-3d',
+                transition: 'transform 0.5s',
+              }}
             >
               <CardContent className="pt-6">
                 {
                   set.flashcards.length > 0 ? (
-                    <div
-                      className="min-h-[300px] flex items-center justify-center text-2xl text-center relative"
-                      style={{
-                        transform: `rotateY(${studyMode === 'term' ? '0deg' : '180deg'})`,
-                        transformStyle: 'preserve-3d',
-                        transition: 'transform 0.5s',
-                      }}
-                    >
-                      <div
-                        className="absolute w-full h-full flex items-center justify-center"
-                        style={{
-                          backfaceVisibility: 'hidden',
-                          transform: 'rotateY(0deg)',
-                        }}
-                      >
-                        {currentFlashcard.term}
-                      </div>
-                      <div
-                        className="absolute w-full h-full flex items-center justify-center"
-                        style={{
-                          backfaceVisibility: 'hidden',
-                          transform: 'rotateY(180deg)',
-                        }}
-                      >
-                        {currentFlashcard.definition}
+                    <div className="min-h-[300px] flex items-center justify-center text-2xl text-center">
+                      <div className="w-full h-full flex items-center justify-center">
+                        <div className="w-full text-center" style={{
+                          transform: studyMode === 'term' ? 'rotateY(0deg)' : 'rotateY(180deg)',
+                          transformStyle: 'preserve-3d',
+                          transition: 'transform 0.5s',
+                        }}>
+                          {studyMode === 'term' ? currentFlashcard.term : currentFlashcard.definition}
+                        </div>
                       </div>
                     </div>
                   ) : (

@@ -6,7 +6,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { ArrowLeft } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import { ArrowLeft, Globe, Lock } from "lucide-react";
 import { TagInput } from "@/components/ui/tag-input";
 
 export default function NewSetPage() {
@@ -14,6 +16,7 @@ export default function NewSetPage() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [tags, setTags] = useState<string[]>([]);
+  const [isPublic, setIsPublic] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -27,7 +30,8 @@ export default function NewSetPage() {
         body: JSON.stringify({ 
           title, 
           description,
-          labels: tags.join(',')
+          labels: tags.join(','),
+          public: isPublic
         }),
       });
 
@@ -48,10 +52,10 @@ export default function NewSetPage() {
       <Button
         variant="ghost"
         className="mb-8"
-        onClick={() => router.back()}
+        onClick={() => router.push('/sets')}
       >
         <ArrowLeft className="mr-2 h-4 w-4" />
-        Back
+        Back to sets
       </Button>
 
       <Card className="max-w-2xl mx-auto">
@@ -97,7 +101,53 @@ export default function NewSetPage() {
               />
             </div>
 
-            <Button type="submit" disabled={isSubmitting}>
+            <div className="space-y-4">
+              <label className="text-sm font-medium">
+                Visibility
+              </label>
+              <div className="space-y-3">
+                <div className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <Checkbox
+                    id="public"
+                    checked={isPublic}
+                    onCheckedChange={(checked) => setIsPublic(checked as boolean)}
+                  />
+                  <div className="flex items-center gap-3">
+                    <Globe className="h-7 w-7 text-primary" />
+                    <div>
+                      <Label htmlFor="public" className="text-sm font-medium cursor-pointer">
+                        Make this set public
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        Anyone can discover and study this set. Great for sharing knowledge with the community.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-3 p-4 border rounded-lg bg-muted/30">
+                  <Checkbox
+                    id="private"
+                    checked={!isPublic}
+                    onCheckedChange={(checked) => setIsPublic(!checked)}
+                    disabled
+                  />
+                  <div className="flex items-center gap-3">
+                    <Lock className="h-7 w-7 text-muted-foreground" />
+                    <div>
+                      <Label htmlFor="private" className="text-sm font-medium text-muted-foreground cursor-pointer">
+                        Keep this set private
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        Only you can see and access this set. Perfect for personal study materials.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <Button type="submit" disabled={isSubmitting} className="w-full">
               {isSubmitting ? 'Creating...' : 'Create Set'}
             </Button>
           </form>

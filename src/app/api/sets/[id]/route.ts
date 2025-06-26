@@ -50,10 +50,6 @@ export async function GET(
       
     }
 
-    if (!session?.user) {
-      return new NextResponse('Unauthorized', { status: 401 });
-    }
-
     const set = await prisma.flashcardSet.findUnique({
       where: {
         id: id,
@@ -97,7 +93,7 @@ export async function GET(
     const hasAccess = set.ownerId === session.user.id || 
       set.sharedWith.some((share: { sharedWithId: string }) => share.sharedWithId === session.user.id);
 
-    if (!hasAccess) {
+    if (!hasAccess && !set.public) {
       return new NextResponse('Unauthorized', { status: 401 });
     }
 
@@ -157,12 +153,34 @@ export async function PUT(
 ) {
   const { id } = await params;
   try {
-    const { title, description, labels } = await request.json();
+    const session = await getServerSession(authOptions);
+    
+    if (!session?.user?.id) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
+      );
+    }
+
+    const { title, description, labels, public: isPublic } = await request.json();
 
     if (!title) {
       return NextResponse.json(
         { error: 'Title is required' },
         { status: 400 }
+      );
+    }
+
+    // Check if user owns this set
+    const existingSet = await prisma.flashcardSet.findUnique({
+      where: { id: id },
+      select: { ownerId: true }
+    });
+
+    if (!existingSet || existingSet.ownerId !== session.user.id) {
+      return NextResponse.json(
+        { error: "Unauthorized" },
+        { status: 401 }
       );
     }
 
@@ -172,6 +190,7 @@ export async function PUT(
         title,
         description: description || null,
         labels: labels || null,
+        public: isPublic !== undefined ? isPublic : false,
       },
     });
 

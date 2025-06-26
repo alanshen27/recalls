@@ -64,7 +64,7 @@ export function FlashcardSetCard({ set, className, onStudyingChange }: Flashcard
   return (
     <Card
       className={cn(
-        'cursor-pointer transition-all duration-300 hover:shadow-lg',
+        'cursor-pointer transition-all duration-300 hover:bg-muted/50',
         className
       )}
       onClick={() => (window.location.href = `/sets/${set.id}`)}

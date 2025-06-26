@@ -11,5 +11,6 @@ export const config = {
   matcher: [
     '/sets/:path*',
     '/settings/:path*',
+    '/dashboard/:path*',
   ],
 }; 

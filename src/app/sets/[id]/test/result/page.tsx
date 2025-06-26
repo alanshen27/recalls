@@ -4,7 +4,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { ArrowLeft, CheckCircle2, XCircle } from 'lucide-react';
+import { CheckCircle2, XCircle } from 'lucide-react';
 import { use } from 'react';
 
 interface TestResult {
@@ -25,15 +25,6 @@ export default function TestResultPage({ params }: { params: Promise<{ id: strin
 
   return (
     <div className="container max-w-4xl py-8">
-      <Button
-        variant="ghost"
-        className="mb-4"
-        onClick={() => router.back()}
-      >
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        Back
-      </Button>
-
       <div className="space-y-6">
         <Card>
           <CardHeader>
@@ -92,7 +83,7 @@ export default function TestResultPage({ params }: { params: Promise<{ id: strin
             variant="outline"
             onClick={() => router.push(`/sets/${id}`)}
           >
-            Back to Set
+            Back to set
           </Button>
           <Button
             onClick={() => router.push(`/sets/${id}/test`)}

@@ -44,6 +44,7 @@ export default function StudyPage({ params }: { params: Promise<{ id: string }> 
   const [studyState, setStudyState] = useState<StudyState>('modal');
   const [studyCards, setStudyCards] = useState<StudyCard[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [studySessionId, setStudySessionId] = useState<string | null>(null);
   const [studyOptions, setStudyOptions] = useState<StudyOptions>({
     count: 10,
     mode: 'both',
@@ -54,6 +55,34 @@ export default function StudyPage({ params }: { params: Promise<{ id: string }> 
 
   // Current card state
   const [currentAnswer, setCurrentAnswer] = useState('');
+
+  // Post single study result
+  const postSingleResult = async (card: StudyCard, answer: string, isCorrect: boolean) => {
+    if (!studySessionId) {
+      console.error('No study session ID available');
+      return;
+    }
+
+    try {
+      await fetch(`/api/sets/${id}/study/session/${studySessionId}/results`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          flashcardId: card.flashcardId,
+          userAnswer: answer,
+          attempts: card.attempts + 1,
+          correct: isCorrect ? 1 : 0,
+          accuracy: isCorrect ? 100 : 0,
+          isCorrect,
+          testTerm: card.testTerm,
+          isMultipleChoice: card.isMultipleChoice,
+          selectedOption: card.isMultipleChoice ? answer : undefined,
+        }),
+      });
+    } catch (error) {
+      console.error('Error posting single study result:', error);
+    }
+  };
 
   // Fetch flashcards on mount
   useEffect(() => {
@@ -85,7 +114,7 @@ export default function StudyPage({ params }: { params: Promise<{ id: string }> 
   };
 
   // Start study session
-  const handleStartStudy = (count: number, options: StudyOptions) => {
+  const handleStartStudy = async (count: number, options: StudyOptions) => {
     setStudyOptions(options);
     
     // Select and prepare cards - only include cards with both term and definition
@@ -101,6 +130,26 @@ export default function StudyPage({ params }: { params: Promise<{ id: string }> 
       selectedCards = selectedCards.sort(() => Math.random() - 0.5);
     }
     selectedCards = selectedCards.slice(0, count);
+    
+    // Create study session first
+    try {
+      const sessionResponse = await fetch(`/api/sets/${id}/study/session`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ studyOptions: options }),
+      });
+
+      if (!sessionResponse.ok) {
+        throw new Error('Failed to create study session');
+      }
+
+      const sessionData = await sessionResponse.json();
+      setStudySessionId(sessionData.id);
+    } catch (error) {
+      console.error('Error creating study session:', error);
+      alert('Failed to start study session. Please try again.');
+      return;
+    }
     
     // Create study cards
     const preparedCards: StudyCard[] = selectedCards.map(card => {
@@ -165,6 +214,9 @@ export default function StudyPage({ params }: { params: Promise<{ id: string }> 
     
     const isCorrect = normalizedUserAnswer === correctAnswer;
 
+    // Post result immediately
+    postSingleResult(currentCard, answer, isCorrect);
+
     setStudyCards(prev => {
       const newCards = [...prev];
       newCards[currentIndex] = {
@@ -196,10 +248,22 @@ export default function StudyPage({ params }: { params: Promise<{ id: string }> 
 
   // Complete study session and save results
   const completeStudySession = async () => {
+    // Mark study session as completed
+    if (studySessionId) {
+      try {
+        await fetch(`/api/sets/${id}/study/session/${studySessionId}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ completedAt: new Date().toISOString() }),
+        });
+      } catch (error) {
+        console.error('Error completing study session:', error);
+      }
+    }
+
+    // Results are already posted one by one, so we can just navigate to results
     const results = studyCards.map(card => ({
       flashcardId: card.flashcardId,
-      term: card.card.term,
-      definition: card.card.definition,
       userAnswer: card.userAnswer,
       attempts: card.attempts,
       correct: card.isCorrect ? 1 : 0,
@@ -209,22 +273,6 @@ export default function StudyPage({ params }: { params: Promise<{ id: string }> 
       isMultipleChoice: card.isMultipleChoice,
       selectedOption: card.isMultipleChoice ? card.userAnswer : undefined,
     }));
-
-    try {
-      const response = await fetch(`/api/sets/${id}/study/results`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studyOptions, results }),
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to save study results');
-      }
-
-      console.log('Study results saved successfully');
-    } catch (error) {
-      console.error('Error saving study results:', error);
-    }
 
     // Navigate to results page
     router.push(`/sets/${id}/study/result?results=${encodeURIComponent(JSON.stringify(results))}`);

@@ -15,8 +15,31 @@ import { NotificationsDropdown } from "@/components/notifications-dropdown";
 
 
 export default function Navbar() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
+  
+  // Don't render until we know the session status to avoid hydration mismatch
+  if (status === "loading") {
+    return (
+      <nav className="border-b bg-white sticky top-0 z-50">
+        <div className="container mx-auto px-4">
+          <div className="flex h-16 items-center justify-between">
+            <Link href="/" className="text-xl text-primary font-bold flex flex-row gap-2 items-center">
+              <img src="/logo-ico.png" className="h-8"/>
+              recalls
+            </Link>
+            <div className="flex items-center gap-6">
+              {/* Loading skeleton */}
+              <div className="h-4 w-20 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-4 w-16 bg-gray-200 rounded animate-pulse"></div>
+              <div className="h-9 w-24 bg-gray-200 rounded animate-pulse"></div>
+            </div>
+          </div>
+        </div>
+      </nav>
+    );
+  }
+
   return (
     <nav className="border-b bg-white sticky top-0 z-50">
       <div className="container mx-auto px-4">
@@ -26,11 +49,14 @@ export default function Navbar() {
             recalls
           </Link>
 
-          <div className="flex items-center gap-4">
+          <div className="flex items-center gap-6">
             {session ? (
               <>
-                <Link href="/sets">
-                  <Button variant="ghost">Explore</Button>
+                <Link href="/dashboard" className="text-sm font-medium hover:text-primary transition-colors">
+                  Dashboard
+                </Link>
+                <Link href="/sets" className="text-sm font-medium hover:text-primary transition-colors">
+                  Explore
                 </Link>
                 <Button variant="default" onClick={() => router.push('/sets/new')}>Create Set</Button>
                 <NotificationsDropdown />

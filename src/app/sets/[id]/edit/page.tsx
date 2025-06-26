@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { ArrowLeft, Save } from 'lucide-react';
+import { Checkbox } from '@/components/ui/checkbox';
+import { Label } from '@/components/ui/label';
+import { ArrowLeft, Save, Globe, Lock } from 'lucide-react';
 import { toast } from 'sonner';
 import EditFlashcards from './EditFlashcards';
 import { Set } from '@/lib/types';
@@ -37,7 +39,7 @@ export default function EditSetPage({ params }: { params: Promise<{ id: string }
     fetchSet();
   }, [id]);
 
-  const updateSet = (field: 'title' | 'description', value: string) => {
+  const updateSet = (field: 'title' | 'description' | 'public', value: string | boolean) => {
     if (!set) return;
     setSet({ ...set, [field]: value });
   };
@@ -52,7 +54,8 @@ export default function EditSetPage({ params }: { params: Promise<{ id: string }
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title: set.title,
-          description: set.description
+          description: set.description,
+          public: set.public
         }),
       });
 
@@ -68,6 +71,7 @@ export default function EditSetPage({ params }: { params: Promise<{ id: string }
     }
   };
 
+
   if (isLoading) {
     return <Loading />;
   }
@@ -77,22 +81,22 @@ export default function EditSetPage({ params }: { params: Promise<{ id: string }
   }
 
   return (
-    <div className="container max-w-4xl py-8">
+    <div className="container w-full py-8">
       <Button
         variant="ghost"
         className="mb-4"
-        onClick={() => router.back()}
+        onClick={() => router.push(`/sets/${id}`)}
       >
         <ArrowLeft className="h-4 w-4 mr-2" />
-        Back
+        Back to set
       </Button>
 
-      <div className="space-y-6">
+      <div className="space-y-6 flex flex-col lg:flex-row lg:space-y-0 gap-6">
         <Card>
           <CardHeader>
             <CardTitle>Edit Set</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
+          <CardContent className="space-y-6">
             <div className="space-y-2">
               <label htmlFor="title" className="text-sm font-medium">
                 Title
@@ -117,6 +121,52 @@ export default function EditSetPage({ params }: { params: Promise<{ id: string }
               />
             </div>
 
+            <div className="space-y-4">
+              <label className="text-sm font-medium">
+                Visibility
+              </label>
+              <div className="space-y-3">
+                <div className="flex items-center space-x-3 p-4 border rounded-lg hover:bg-muted/50 transition-colors">
+                  <Checkbox
+                    id="public"
+                    checked={set.public}
+                    onCheckedChange={(checked) => updateSet('public', checked as boolean)}
+                  />
+                  <div className="flex items-center gap-3">
+                    <Globe className="h-7 w-7 text-primary" />
+                    <div>
+                      <Label htmlFor="public" className="text-sm font-medium cursor-pointer">
+                        Make this set public
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        Anyone can discover and study this set. Great for sharing knowledge with the community.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex items-center space-x-3 p-4 border rounded-lg bg-muted/30">
+                  <Checkbox
+                    id="private"
+                    checked={!set.public}
+                    onCheckedChange={(checked) => updateSet('public', !checked)}
+                    disabled
+                  />
+                  <div className="flex items-center gap-3">
+                    <Lock className="h-7 w-7 text-muted-foreground" />
+                    <div>
+                      <Label htmlFor="private" className="text-sm font-medium text-muted-foreground cursor-pointer">
+                        Keep this set private
+                      </Label>
+                      <p className="text-sm text-muted-foreground">
+                        Only you can see and access this set. Perfect for personal study materials.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <Button
               onClick={saveSet}
               disabled={isSaving}
@@ -128,11 +178,13 @@ export default function EditSetPage({ params }: { params: Promise<{ id: string }
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="w-full">
           <CardHeader>
-            <CardTitle>Flashcards</CardTitle>
+            <CardTitle className="flex justify-between items-center gap-2">
+              <span>Flashcards</span>
+            </CardTitle>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-6">    
             <EditFlashcards
               setId={id}
               initialFlashcards={set.flashcards}

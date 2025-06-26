@@ -214,10 +214,10 @@ export default function TestPage({ params }: { params: Promise<{ id: string }> }
       <div className="flex justify-between items-center mb-4">
         <Button
           variant="ghost"
-          onClick={() => router.back()}
+          onClick={() => router.push(`/sets/${id}`)}
         >
           <ArrowLeft className="h-4 w-4 mr-2" />
-          Back
+          Back to set
         </Button>
         <Button
           variant="outline"

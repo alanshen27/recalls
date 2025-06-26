@@ -9,4 +9,5 @@ export interface Set {
     title: string;
     description: string | null;
     flashcards: Flashcard[];
+    public: boolean;
   }

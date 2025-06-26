@@ -5,12 +5,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, Save, Lock, Check, Bot, Upload } from 'lucide-react';
+import { Plus, Trash2, Save, Lock, Check, Bot } from 'lucide-react';
 import { emitFlashcardCreate, emitFlashcardDelete, emitFlashcardLock, emitFlashcardUnlock, emitFlashcardUpdate, getSocket } from '@/lib/socket';
 import { toast } from 'sonner';
 import { useDebounce } from '@/hooks/use-debounce';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { FileUpload } from '@/components/file-upload';
 
 interface Flashcard {
   id: string;
@@ -21,11 +19,9 @@ interface Flashcard {
 interface EditFlashcardsProps {
   setId: string;
   initialFlashcards: Flashcard[];
-  previewMode?: boolean;
-  onFlashcardsChange?: (flashcards: Flashcard[]) => void;
 }
 
-export default function EditFlashcards({ setId, initialFlashcards, previewMode, onFlashcardsChange }: EditFlashcardsProps) {
+export default function EditFlashcards({ setId, initialFlashcards }: EditFlashcardsProps) {
   const [flashcards, setFlashcards] = useState<Flashcard[]>(initialFlashcards);
   const [lastState, setLastState] = useState<Flashcard[]>(initialFlashcards);
 
@@ -39,8 +35,6 @@ export default function EditFlashcards({ setId, initialFlashcards, previewMode, 
 
 
   useEffect(() => {
-    if (previewMode) return; // Skip AI completion in preview mode
-    
     if (focusedDefinition && !flashcards.find((f) => f.id === focusedDefinition)?.definition?.length && !focusedTerm) {
       setAutocomplete("Loading AI completion...");
       const fetchAutocomplete = async () => {
@@ -65,13 +59,11 @@ export default function EditFlashcards({ setId, initialFlashcards, previewMode, 
       };
       fetchAutocomplete();
     }
-  }, [focusedDefinition, focusedTerm, flashcards, previewMode, setId]);
+  }, [focusedDefinition, focusedTerm, flashcards]);
 
   const flashcardRefs = useRef<Record<string, HTMLInputElement>>({});
 
   useEffect(() => {
-      if (previewMode) return; // Skip socket functionality in preview mode
-      
       const socket = getSocket();
   
       socket.on('flashcard:updated', (data: {
@@ -111,21 +103,15 @@ export default function EditFlashcards({ setId, initialFlashcards, previewMode, 
         socket.off('flashcard:locked')
         socket.off('flashcard:unlocked')
       }
-  }, [previewMode, flashcards])
+  }, [])
 
   // Auto-save when debouncedFlashcards changes
   useEffect(() => {
-    if (previewMode) {
-      // In preview mode, just notify parent of changes
-      onFlashcardsChange?.(flashcards);
-      return;
-    }
-    
     // Don't auto-save on initial mount
     if (debouncedFlashcards === initialFlashcards) return;
-    saveFlashcards(flashcards); // Save current state, not debounced state
+    saveFlashcards(debouncedFlashcards);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [debouncedFlashcards, previewMode, flashcards, onFlashcardsChange]);
+  }, [debouncedFlashcards]);
 
   const saveFlashcards = async (cards: Flashcard[]) => {
     if (isSaved) return;
@@ -199,9 +185,7 @@ export default function EditFlashcards({ setId, initialFlashcards, previewMode, 
   };
 
   const addFlashcard = () => {
-    if (!previewMode) {
-      setIsSaved(false);
-    }
+    setIsSaved(false);
     // Add a temporary flashcard with a unique ID
     const tempId = `temp_${Date.now()}`;
     const newFlashcard = { id: tempId, term: '', definition: '' };
@@ -211,35 +195,24 @@ export default function EditFlashcards({ setId, initialFlashcards, previewMode, 
   };
 
   const removeFlashcard = (index: number) => {
-    if (!previewMode) {
-      setIsSaved(false);
-    }
+    setIsSaved(false);
     const flashcard = flashcards[index];
     console.log('Removing flashcard:', flashcard);
-    if (flashcard.id && !previewMode) {
+    if (flashcard.id) {
       emitFlashcardDelete(flashcard.id, 'system');
     }
     const newFlashcards = [...flashcards];
     newFlashcards.splice(index, 1);
     setFlashcards(newFlashcards);
-    if (!previewMode) {
-      toast.success('Flashcard deleted successfully');
-    }
+    toast.success('Flashcard deleted successfully');
   };
 
   const updateFlashcard = (index: number, field: 'term' | 'definition', value: string) => {
-    if (!previewMode) {
-      setIsSaved(false);
-    }
+    setIsSaved(false);
     const newFlashcards = [...flashcards];
     newFlashcards[index] = { ...newFlashcards[index], [field]: value };
 
     setFlashcards(newFlashcards);
-  };
-
-  const handleFlashcardsUpload = (data: { term: string; definition: string }[]) => {
-    setIsSaved(false);
-    setFlashcards(prev => [...prev, ...data.map((item, index) => ({ id: `temp_${Date.now()}_${index}`, term: item.term, definition: item.definition }))]);
   };
 
   return (
@@ -248,12 +221,12 @@ export default function EditFlashcards({ setId, initialFlashcards, previewMode, 
         <Card key={index}>
         <CardContent
           className={`p-4 space-y-4 relative border rounded-md transition-all duration-150
-            ${!previewMode && lockedFlashcards.includes(flashcard.id)
+            ${lockedFlashcards.includes(flashcard.id)
               ? 'border-red-500 opacity-50'
               : 'border-transparent opacity-100'}`}
         >
           <div className="relative">
-            {!previewMode && lockedFlashcards.includes(flashcard.id) && (
+            {lockedFlashcards.includes(flashcard.id) && (
               <div className="absolute -top-2 -right-2 z-10">
                 <Badge variant="outline" className="flex flex-row items-center gap-2 bg-background" >
                   <Lock className="h-4 w-4" />
@@ -278,16 +251,12 @@ export default function EditFlashcards({ setId, initialFlashcards, previewMode, 
                   setAutocomplete(null);
                   setFocusedTerm(flashcard.id);
                   setFocusedDefinition(null);
-                  if (!previewMode) {
-                    emitFlashcardLock(flashcard.id, 'system')
-                  }
+                  emitFlashcardLock(flashcard.id, 'system')
                 }}
                 onBlur={() => {
                   // Add a small delay to allow button click to register
                   setTimeout(() => {
-                    if (!previewMode) {
-                      emitFlashcardUnlock(flashcard.id, 'system')
-                    }
+                    emitFlashcardUnlock(flashcard.id, 'system')
                   }, 100);
                 }}
                 onKeyDown={(e) => {
@@ -304,7 +273,7 @@ export default function EditFlashcards({ setId, initialFlashcards, previewMode, 
                     }
                   }
                 }}
-                disabled={!previewMode && lockedFlashcards.includes(flashcard.id)}
+                disabled={lockedFlashcards.includes(flashcard.id)}
               />
               {autocomplete && flashcard.id === focusedTerm && (
                 <Card className="absolute top-full left-0 right-0 p-2 bg-white text-xs rounded-md z-30 flex flex-row items-center gap-2">
@@ -329,11 +298,9 @@ export default function EditFlashcards({ setId, initialFlashcards, previewMode, 
                   setAutocomplete(null);
                   setFocusedDefinition(flashcard.id);
                   setFocusedTerm(null);
-                  if (!previewMode) {
-                    emitFlashcardLock(flashcard.id, 'system')
-                  }
+                  emitFlashcardLock(flashcard.id, 'system')
                 }}
-                disabled={!previewMode && lockedFlashcards.includes(flashcard.id)}
+                disabled={lockedFlashcards.includes(flashcard.id)}
               />
               {autocomplete && flashcard.id === focusedDefinition && (
                 <Card className="absolute top-full left-0 right-0 p-2 bg-white text-xs rounded-md z-30 flex flex-row items-center gap-2">
@@ -366,7 +333,6 @@ export default function EditFlashcards({ setId, initialFlashcards, previewMode, 
       ))}
 
       <div className="flex justify-between">
-        <div className="flex items-center gap-2">
         <Button
           variant="outline"
           onClick={addFlashcard}
@@ -375,37 +341,15 @@ export default function EditFlashcards({ setId, initialFlashcards, previewMode, 
           <Plus className="h-4 w-4" />
           Add Flashcard
         </Button>
-        {!previewMode && (
-          <Dialog>
-            <DialogTrigger asChild>
-              <Button variant="outline" className="flex items-center gap-2">
-              <Upload className="h-4 w-4" />
-              Upload
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>Upload Flashcards</DialogTitle>
-            </DialogHeader>
-            <DialogDescription>
-              Upload a CSV file to add flashcards to your set.
-            </DialogDescription>
-            <FileUpload onUpload={handleFlashcardsUpload} setId={setId} />
-          </DialogContent>
-        </Dialog>
-        )}
-        </div>
 
-        {!previewMode && (
-          <Button
-            onClick={() => saveFlashcards(flashcards)}
-            disabled={isSaving || isSaved}
-            className="flex items-center gap-2"
-          >
-            <Save className="h-4 w-4" />
-            {isSaving ? 'Saving...' : 'Save Changes'}
-          </Button>
-        )}
+        <Button
+          onClick={() => saveFlashcards(flashcards)}
+          disabled={isSaving || isSaved}
+          className="flex items-center gap-2"
+        >
+          <Save className="h-4 w-4" />
+          {isSaving ? 'Saving...' : 'Save Changes'}
+        </Button>
       </div>
     </div>
   );

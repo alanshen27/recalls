@@ -17,12 +17,14 @@ import { Loading } from "@/components/ui/loading"
 interface ShareSetDialogProps {
   setId: string
   title: string
+  onShare: () => void
 }
 
-export function ShareSetDialog({ setId, title }: ShareSetDialogProps) {
+export function ShareSetDialog({ setId, title, onShare }: ShareSetDialogProps) {
   const [email, setEmail] = useState("")
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [isOpen, setIsOpen] = useState(false)
 
   const handleShare = async () => {
     if (!email) {
@@ -48,16 +50,17 @@ export function ShareSetDialog({ setId, title }: ShareSetDialogProps) {
       }
 
       setEmail("")
-      // You might want to add a success toast here
+      onShare()
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to share set")
     } finally {
       setIsLoading(false)
+      setIsOpen(false)
     }
   }
 
   return (
-    <Dialog>
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
       <DialogTrigger asChild>
         <Button variant="ghost" size="icon">
           <Share2 className="h-4 w-4" />
