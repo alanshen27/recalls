@@ -203,3 +203,38 @@ export async function PUT(
     );
   }
 } 
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const { id } = await params;
+  try {
+    const session = await getServerSession(authOptions);
+
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const set = await prisma.flashcardSet.findUnique({
+      where: { id: id },
+    });
+
+    if (!set) {
+      return NextResponse.json({ error: "Set not found" }, { status: 404 });
+    }
+
+    if (set.ownerId !== session.user.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    await prisma.flashcardSet.delete({
+      where: { id: id },
+    });
+
+    return NextResponse.json({ message: "Set deleted successfully" });
+  } catch (error) {
+    console.error('Error deleting set:', error);
+    return NextResponse.json({ error: "Failed to delete set" }, { status: 500 });
+  }
+}

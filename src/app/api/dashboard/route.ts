@@ -70,15 +70,9 @@ export async function GET() {
       }
       return session;
     });
-
-
-    console.log(recentSessions)
-    // Calculate stats
-
-
     
     const setsStudiedThisWeek = new Set(recentSessions.map(s => s.flashcardSetId)).size;
-    const totalStudyTime = recentSessions.reduce((sum, session) => sum + getDuration(session), 0);
+    const totalStudyTime = recentSessions.reduce((sum, session) => sum + getDuration(session), 0) / 1000;
     const totalCardsStudied = recentSessions.reduce((sum, session) => sum + session.results.length, 0);
     const totalCorrectAnswers = recentSessions.reduce((sum, session) => sum + session.results.filter(r => r.isCorrect).length, 0);
     const averageRetentionRate = totalCardsStudied > 0 ? Math.round((totalCorrectAnswers / totalCardsStudied) * 100) : 0;

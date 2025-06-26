@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { FlashcardSet, Flashcard, User } from '@prisma/client';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, ChevronLeft, ChevronRight, Edit, BookOpen, ClipboardCheck, Users, X, Bookmark, Globe, Lock } from "lucide-react";
+import { ArrowLeft, ChevronLeft, ChevronRight, Edit, BookOpen, ClipboardCheck, Users, X, Bookmark, Globe, Lock, Trash } from "lucide-react";
 import Link from 'next/link';
 import { ShareSetDialog } from "@/components/share-set-dialog";
 import { Loading } from "@/components/ui/loading";
@@ -40,7 +40,7 @@ export default function SetPage({ params }: { params: Promise<{ id: string }> })
   const [isStudying, setIsStudying] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [sidebarKey, setSidebarKey] = useState(0);
-
+  
   const fetchSet = async () => {
     try {
       const response = await fetch(`/api/sets/${id}`);
@@ -150,6 +150,22 @@ export default function SetPage({ params }: { params: Promise<{ id: string }> })
     }
   };
 
+  const handleDeleteSet = async () => {
+    try {
+      const response = await fetch(`/api/sets/${id}`, {
+        method: 'DELETE',
+      });
+
+      if (!response.ok) throw new Error('Failed to delete set');
+
+      toast.success('Set deleted successfully');
+      router.push('/sets');
+    } catch (error) {
+      console.error('Error deleting set:', error);
+      toast.error('Failed to delete set');
+    }
+  };
+
   if (isLoading) {
     return <SetPageLoading />;
   }
@@ -245,6 +261,10 @@ export default function SetPage({ params }: { params: Promise<{ id: string }> })
               >
                 <Bookmark className={cn('h-5 w-5', { 'fill-primary text-primary': isStudying })} />
               </Button>
+              <Button variant="ghost" size="icon" onClick={handleDeleteSet}>
+                <Trash className="h-4 w-4" />
+              </Button>
+              {/* @todo: these buttons shouldn't be showing for all users (CRUD) */}
             </div>
 
             {set.sharedWith.length > 0 && (

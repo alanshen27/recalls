@@ -119,13 +119,10 @@ export default function DashboardPage() {
     );
   }
 
-  const formatTime = (milliseconds: number) => {
-
-    const minutes = Math.floor(milliseconds / 60000);
+  const formatTime = (minutes: number) => {
     const hours = Math.floor(minutes / 60);
-    const mins = minutes % 60;
-    const seconds = Math.floor((milliseconds % 60000) / 1000);
-    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m ${seconds}s`;
+    const mins = (minutes % 60).toFixed(0);
+    return hours > 0 ? `${hours}h ${mins}m` : `${mins}m`;
   };
 
   return (
@@ -211,8 +208,8 @@ export default function DashboardPage() {
             </Card>
           </div>
 
-            {/* File Upload Section - Show when no sets or as "Get Started" */}
-            {(stats?.totalSets === 0 || showFileUpload) && (
+          {/* File Upload Section - Show when no sets or as "Get Started" */}
+          {stats?.totalSets === 0 && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
