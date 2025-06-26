@@ -9,6 +9,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
 import { Input } from '@/components/ui/input';
 import { Loading } from "@/components/ui/loading";
+import { toast } from 'sonner';
 
 interface StudyCard {
   card: Flashcard;
@@ -45,14 +46,6 @@ export default function StudyPage({ params }: { params: Promise<{ id: string }> 
   const [studyCards, setStudyCards] = useState<StudyCard[]>([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [studySessionId, setStudySessionId] = useState<string | null>(null);
-  const [studyOptions, setStudyOptions] = useState<StudyOptions>({
-    count: 10,
-    mode: 'both',
-    shuffle: true,
-    repeat: true,
-    studyStyle: 'both'
-  });
-
   // Current card state
   const [currentAnswer, setCurrentAnswer] = useState('');
 
@@ -115,14 +108,13 @@ export default function StudyPage({ params }: { params: Promise<{ id: string }> 
 
   // Start study session
   const handleStartStudy = async (count: number, options: StudyOptions) => {
-    setStudyOptions(options);
     
     // Select and prepare cards - only include cards with both term and definition
     let selectedCards = flashcards.filter(card => card.term && card.definition);
     
     if (selectedCards.length === 0) {
       // No valid cards to study
-      alert('No flashcards with both term and definition found. Please add complete flashcards to this set.');
+      toast.error('No flashcards with both term and definition found. Please add complete flashcards to this set.');
       return;
     }
     
@@ -147,7 +139,7 @@ export default function StudyPage({ params }: { params: Promise<{ id: string }> 
       setStudySessionId(sessionData.id);
     } catch (error) {
       console.error('Error creating study session:', error);
-      alert('Failed to start study session. Please try again.');
+      toast.error('Failed to start study session. Please try again.');
       return;
     }
     
@@ -158,24 +150,28 @@ export default function StudyPage({ params }: { params: Promise<{ id: string }> 
         options.studyStyle === 'typed' ? false :
         Math.random() < 0.5;
 
+      // the thing you are testing for
       const testTerm = options.mode === 'both' 
-        ? Math.random() < 0.5 
-        : options.mode === 'term';
+        ? Math.random() < 0.5 // 0.0-0.4 true, 0.5-1.0 false
+        : options.mode === 'term' ? true : false; // true = term, false = definition
 
       // If asking for term, correct answer is the term, choices are definitions
       // If asking for definition, correct answer is the definition, choices are terms
-      const correctAnswer = testTerm ? card.term! : card.definition!;
+      const correctAnswer = testTerm ? card.definition! : card.term!; // true = term, false = definition
       
       // For multiple choice, we need to get all possible choices from other cards
-      // When asking for term, choices should be definitions from other cards
-      // When asking for definition, choices should be terms from other cards
+      // When asking for term, choices should be terms from other cards
+      // When asking for definition, choices should be definitions from other cards
       let multipleChoiceOptions: string[] | undefined;
       
       if (isMultipleChoice) {
-        const allChoices = flashcards.map(otherCard => 
-          testTerm ? otherCard.definition! : otherCard.term!
-        ).filter(Boolean);
-        
+        const allChoices = flashcards.map(otherCard => {
+          if (testTerm) {
+            return otherCard.definition!;
+          }
+          return otherCard.term!;
+        }).filter(Boolean);
+
         multipleChoiceOptions = generateMultipleChoiceOptions(correctAnswer, allChoices);
       }
       
@@ -191,6 +187,8 @@ export default function StudyPage({ params }: { params: Promise<{ id: string }> 
         attempts: 0,
       };
     });
+
+    console.log(preparedCards);
     
     setStudyCards(preparedCards);
     setCurrentIndex(0);
@@ -209,8 +207,8 @@ export default function StudyPage({ params }: { params: Promise<{ id: string }> 
     // If asking for term, correct answer is the term
     // If asking for definition, correct answer is the definition
     const correctAnswer = currentCard.testTerm
-      ? currentCard.card.term!.trim().toLowerCase()
-      : currentCard.card.definition!.trim().toLowerCase();
+      ? currentCard.card.definition!.trim().toLowerCase()
+      : currentCard.card.term!.trim().toLowerCase();
     
     const isCorrect = normalizedUserAnswer === correctAnswer;
 
@@ -375,13 +373,13 @@ export default function StudyPage({ params }: { params: Promise<{ id: string }> 
               <div>
                 <p className="text-lg font-medium">
                   {currentCard.testTerm 
-                    ? currentCard.card.definition 
-                    : currentCard.card.term}
+                    ? currentCard.card.term 
+                    : currentCard.card.definition}
                 </p>
                 <p className="text-sm text-muted-foreground mt-2">
                   {currentCard.testTerm 
-                    ? 'Enter the term' 
-                    : 'Enter the definition'}
+                    ? 'Enter the definition' 
+                    : 'Enter the term'}
                 </p>
               </div>
 
@@ -392,8 +390,8 @@ export default function StudyPage({ params }: { params: Promise<{ id: string }> 
                     options={currentCard.multipleChoiceOptions!}
                     selectedAnswer={currentAnswer}
                     correctAnswer={currentCard.testTerm 
-                      ? currentCard.card.term! 
-                      : currentCard.card.definition!}
+                      ? currentCard.card.definition! 
+                      : currentCard.card.term!}
                     isAnswered={currentCard.isAnswered}
                     onSelect={submitAnswer}
                   />
@@ -415,8 +413,8 @@ export default function StudyPage({ params }: { params: Promise<{ id: string }> 
                     isCorrect={currentCard.isCorrect}
                     userAnswer={currentCard.userAnswer}
                     correctAnswer={currentCard.testTerm 
-                      ? currentCard.card.term! 
-                      : currentCard.card.definition!}
+                      ? currentCard.card.definition! 
+                      : currentCard.card.term!}
                   />
                 )}
               </div>
