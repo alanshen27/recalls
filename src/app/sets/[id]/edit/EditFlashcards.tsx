@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Card, CardContent } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, Save, Lock, Check, Bot, Upload } from 'lucide-react';
+import { Plus, Trash2, Save, Lock, Check, Bot, Upload, Loader2 } from 'lucide-react';
 import { emitFlashcardCreate, emitFlashcardDelete, emitFlashcardLock, emitFlashcardUnlock, emitFlashcardUpdate, getSocket } from '@/lib/socket';
 import { toast } from 'sonner';
 import { useDebounce } from '@/hooks/use-debounce';
@@ -307,15 +307,17 @@ export default function EditFlashcards({ setId, initialFlashcards, previewMode, 
                 disabled={!previewMode && lockedFlashcards.includes(flashcard.id)}
               />
               {autocomplete && flashcard.id === focusedTerm && (
-                <Card className="absolute top-full left-0 right-0 p-2 bg-white text-xs rounded-md z-30 flex flex-row items-center gap-2">
+                <Card className="absolute top-full left-0 right-0 p-2 bg-background text-xs rounded-md z-30 flex flex-row items-center gap-2">
                 <Bot className="h-4 w-4" />
                 <div className="flex-1">{autocomplete}</div>
                 <Button size="icon" onClick={() => {
                   updateFlashcard(index, 'term', autocomplete);
                   setAutocomplete(null);
                   setFocusedTerm(null);
-                }}>
-                  <Check className="h-2 w-2" />
+                }}
+                disabled={autocomplete === "Loading AI completion..."}
+                >
+                  {autocomplete === "Loading AI completion..." ? <Loader2 className="h-2 w-2 animate-spin" /> : <Check className="h-2 w-2" />}
                 </Button>
               </Card>
               )}
@@ -336,15 +338,17 @@ export default function EditFlashcards({ setId, initialFlashcards, previewMode, 
                 disabled={!previewMode && lockedFlashcards.includes(flashcard.id)}
               />
               {autocomplete && flashcard.id === focusedDefinition && (
-                <Card className="absolute top-full left-0 right-0 p-2 bg-white text-xs rounded-md z-30 flex flex-row items-center gap-2">
+                <Card className="absolute top-full left-0 right-0 p-2 bg-background text-xs rounded-md z-30 flex flex-row items-center gap-2">
                   <Bot className="h-4 w-4" />
                   <div className="flex-1">{autocomplete}</div>
                   <Button size="icon" onClick={() => {
                     updateFlashcard(index, 'definition', autocomplete);
                     setAutocomplete(null);
                     setFocusedDefinition(null);
-                  }}>
-                    <Check className="h-2 w-2" />
+                  }}
+                  disabled={autocomplete === "Loading AI completion..."}
+                  >
+                    {autocomplete === "Loading AI completion..." ? <Loader2 className="h-2 w-2 animate-spin" /> : <Check className="h-2 w-2" />}
                   </Button>
                 </Card>
               )}

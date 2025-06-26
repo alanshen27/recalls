@@ -3,7 +3,7 @@
 import { useState, useRef } from 'react';
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Upload, FileText, File, X, CheckCircle, AlertCircle } from "lucide-react";
+import { Upload, FileText, File, X, CheckCircle, AlertCircle, Bot } from "lucide-react";
 import { toast } from "sonner";
 import { Textarea } from './ui/textarea';
 import { Tabs, TabsTrigger, TabsList } from './ui/tabs';
@@ -24,7 +24,7 @@ interface FileUploadProps {
 export function FileUpload({ onUpload, setId }: FileUploadProps) {
     const [isDragging, setIsDragging] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
-    const [mode, setMode] = useState<'file' | 'text'>('file');
+    const [mode, setMode] = useState<'file' | 'text' | 'ai'>('file');
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [textInput, setTextInput] = useState('');
     const [previewData, setPreviewData] = useState<Flashcard[]>([]);
@@ -100,6 +100,42 @@ export function FileUpload({ onUpload, setId }: FileUploadProps) {
         }
     };
 
+    const handleAiSubmit = async () => {
+        if (!textInput.trim()) {
+            toast.error('Please enter some flashcard data');
+            return;
+        }
+
+        setIsProcessing(true);
+        try {
+            const response = await fetch('/api/sets/inference/flashcards', {
+                method: 'POST',
+                body: JSON.stringify({
+                    text: textInput
+                })
+            });
+
+            if (!response.ok) {
+                toast.error('Error generating flashcards');
+                return;
+            }
+
+            const data = await response.json();
+            const flashcards = data.flashcards;
+
+            const parsedFlashcards = parseFlashcards(flashcards);
+
+            setPreviewData(parsedFlashcards);
+            setShowPreview(true);            
+        } catch (error) {
+            console.error('Error processing text:', error);
+            toast.error('Error processing text input');
+        } finally {
+            setIsProcessing(false);
+        }
+    }
+
+
     const handleProcessFlashcards = (flashcards: Flashcard[]) => {
         if (flashcards.length === 0) {
             toast.error('No flashcards to process');
@@ -108,9 +144,9 @@ export function FileUpload({ onUpload, setId }: FileUploadProps) {
 
         const processedData = flashcards
             .filter(card => card.term && card.definition)
-            .map(({ term, definition }) => ({ 
-                term: term!, 
-                definition: definition! 
+            .map(({ term, definition }) => ({
+                term: term!,
+                definition: definition!
             }));
 
         if (processedData.length === 0) {
@@ -120,7 +156,7 @@ export function FileUpload({ onUpload, setId }: FileUploadProps) {
 
         onUpload?.(processedData);
         toast.success(`Successfully processed ${processedData.length} flashcards`);
-        
+
         // Reset the form
         setShowPreview(false);
         setPreviewData([]);
@@ -184,8 +220,8 @@ export function FileUpload({ onUpload, setId }: FileUploadProps) {
             {!showPreview ? (
                 <Card className={cn(
                     "border-2 border-dashed transition-all duration-200",
-                    isDragging 
-                        ? "border-primary bg-primary/5 scale-[1.02] shadow-lg" 
+                    isDragging
+                        ? "border-primary bg-primary/5 scale-[1.02] shadow-lg"
                         : "border-muted-foreground/25 hover:border-muted-foreground/40"
                 )}>
                     <CardContent className="p-8">
@@ -194,8 +230,8 @@ export function FileUpload({ onUpload, setId }: FileUploadProps) {
                             <div className="space-y-3">
                                 <div className={cn(
                                     "mx-auto w-16 h-16 rounded-full flex items-center justify-center transition-all duration-200",
-                                    isDragging 
-                                        ? "bg-primary/10 text-primary scale-110" 
+                                    isDragging
+                                        ? "bg-primary/10 text-primary scale-110"
                                         : "bg-muted text-muted-foreground"
                                 )}>
                                     <Upload className={cn(
@@ -217,7 +253,7 @@ export function FileUpload({ onUpload, setId }: FileUploadProps) {
                                 className="w-full max-w-md mx-auto"
                                 onValueChange={(value) => setMode(value as 'file' | 'text')}
                             >
-                                <TabsList className="grid w-full grid-cols-2">
+                                <TabsList className="grid w-full grid-cols-3">
                                     <TabsTrigger value="file" className="flex items-center gap-2">
                                         <FileText className="h-4 w-4" />
                                         File Upload
@@ -226,17 +262,21 @@ export function FileUpload({ onUpload, setId }: FileUploadProps) {
                                         <File className="h-4 w-4" />
                                         Text Input
                                     </TabsTrigger>
+                                    <TabsTrigger value="ai" className="flex items-center gap-2">
+                                        <Bot className="h-4 w-4" />
+                                        AI
+                                    </TabsTrigger>
                                 </TabsList>
                             </Tabs>
 
                             {/* Content */}
                             <div className="space-y-4">
-                                {mode === 'file' ? (
-                                    <div 
+                                {mode === 'file' && (
+                                    <div
                                         className={cn(
                                             "border-2 border-dashed rounded-lg p-6 transition-all duration-200 cursor-pointer",
-                                            isDragging 
-                                                ? "border-primary bg-primary/5" 
+                                            isDragging
+                                                ? "border-primary bg-primary/5"
                                                 : "border-muted-foreground/25 hover:border-muted-foreground/40"
                                         )}
                                         onDragOver={handleDragOver}
@@ -292,7 +332,8 @@ export function FileUpload({ onUpload, setId }: FileUploadProps) {
                                             </div>
                                         )}
                                     </div>
-                                ) : (
+                                )}
+                                {mode === 'text' && (
                                     <div className="space-y-4">
                                         <Textarea
                                             value={textInput}
@@ -318,6 +359,40 @@ export function FileUpload({ onUpload, setId }: FileUploadProps) {
                                                 </>
                                             )}
                                         </Button>
+                                    </div>
+                                )}
+                                {mode === 'ai' && (
+                                    <div className="space-y-4">
+                                        <div className="relative">
+                                            <Textarea
+                                                value={textInput}
+                                                onChange={(e) => setTextInput(e.target.value)}
+                                                placeholder="Enter your context that you want to study here, the LLM will generate flashcards for you."
+                                                className="h-32 resize-none"
+                                                disabled={isProcessing}
+                                            />
+                                            <Button variant="ghost" className="absolute right-2 top-2">
+                                                <Bot className="h-4 w-4" />
+                                            </Button>
+
+                                        </div>
+                                        <Button
+                                            onClick={handleAiSubmit}
+                                            disabled={isProcessing || !textInput.trim()}
+                                            className="w-full"
+                                        >
+                                            {isProcessing ? (
+                                                <div className="flex items-center gap-2">
+                                                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
+                                                    Processing...
+                                                </div>
+                                            ) : (
+                                                <>
+                                                    <Bot className="h-4 w-4 mr-2" />
+                                                    Generate Flashcards
+                                                </>
+                                            )}
+                                        </Button>                                    
                                     </div>
                                 )}
 

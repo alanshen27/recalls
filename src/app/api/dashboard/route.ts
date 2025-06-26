@@ -63,7 +63,8 @@ export async function GET() {
         results: true,
       }
     })).map(session => {
-      if (!session.completedAt) {
+
+      if (!session.completedAt && session.results.length > 0) {
         session.results.sort((a, b) => a.answeredAt.getTime() - b.answeredAt.getTime());
         session.completedAt = session.results[session.results.length - 1].answeredAt;
       }
@@ -89,7 +90,7 @@ export async function GET() {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const completedToday = recentSessions
-      .filter(session => session.completedAt && session.completedAt >= today)
+      .filter(session => session && session.completedAt && session.completedAt >= today)
       .reduce((sum, session) => sum + session.results.length, 0);
 
     // Get recent sets with progress
