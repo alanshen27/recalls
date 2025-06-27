@@ -3,23 +3,20 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Flame, Calendar, Award, BookOpen, Target, Star } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Achievement,achievements } from "@/utils/achievements";
 
 interface StreakDisplayProps {
   currentStreak: number;
   longestStreak?: number;
   className?: string;
-  totalSets?: number;
-  totalStudyTime?: number;
-  averageRetentionRate?: number;
-}
+  gottenAchievements: Achievement[];
+  }
 
 export function StreakDisplay({ 
   currentStreak, 
   longestStreak, 
   className,
-  totalSets = 0,
-  totalStudyTime = 0,
-  averageRetentionRate = 0
+  gottenAchievements
 }: StreakDisplayProps) {
   const getStreakColor = (streak: number) => {
     if (streak >= 7) return "text-red-500 dark:text-red-400";
@@ -41,92 +38,27 @@ export function StreakDisplay({
     return "Incredible dedication!";
   };
 
-  // Calculate achievements
-  const achievements = [
-    {
-      id: 'streak-1',
-      title: 'First Day',
-      description: 'Complete your first day of studying',
-      icon: Flame,
-      unlocked: currentStreak >= 1,
-      color: 'green'
-    },
-    {
-      id: 'streak-3',
-      title: '3-Day Streak',
-      description: 'Study for 3 consecutive days',
-      icon: Flame,
-      unlocked: currentStreak >= 3,
-      color: 'orange'
-    },
-    {
-      id: 'streak-7',
-      title: 'Week Warrior',
-      description: 'Study for 7 consecutive days',
-      icon: Flame,
-      unlocked: currentStreak >= 7,
-      color: 'red'
-    },
-    {
-      id: 'streak-30',
-      title: 'Monthly Master',
-      description: 'Study for 30 consecutive days',
-      icon: Flame,
-      unlocked: currentStreak >= 30,
-      color: 'purple'
-    },
-    {
-      id: 'sets-5',
-      title: 'Set Collector',
-      description: 'Create 5 flashcard sets',
-      icon: BookOpen,
-      unlocked: totalSets >= 5,
-      color: 'blue'
-    },
-    {
-      id: 'sets-10',
-      title: 'Set Master',
-      description: 'Create 10 flashcard sets',
-      icon: BookOpen,
-      unlocked: totalSets >= 10,
-      color: 'blue'
-    },
-    {
-      id: 'time-60',
-      title: 'Hour Learner',
-      description: 'Study for 1 hour total',
-      icon: Target,
-      unlocked: totalStudyTime >= 60,
-      color: 'green'
-    },
-    {
-      id: 'time-300',
-      title: 'Dedicated Student',
-      description: 'Study for 5 hours total',
-      icon: Target,
-      unlocked: totalStudyTime >= 300,
-      color: 'orange'
-    },
-    {
-      id: 'retention-80',
-      title: 'High Retention',
-      description: 'Achieve 80%+ retention rate',
-      icon: Star,
-      unlocked: averageRetentionRate >= 80,
-      color: 'yellow'
-    },
-    {
-      id: 'retention-90',
-      title: 'Memory Master',
-      description: 'Achieve 90%+ retention rate',
-      icon: Star,
-      unlocked: averageRetentionRate >= 90,
-      color: 'yellow'
-    }
-  ];
+  const getIconComponent = (icon: string, color: string) => {
+    const className = cn("h-3 w-3", {
+      'text-green-600 dark:text-green-400': color === 'green',
+      'text-orange-600 dark:text-orange-400': color === 'orange',
+      'text-red-600 dark:text-red-400': color === 'red',
+      'text-purple-600 dark:text-purple-400': color === 'purple',
+      'text-blue-600 dark:text-blue-400': color === 'blue',
+      'text-yellow-600 dark:text-yellow-400': color === 'yellow',
+      'text-gray-400 dark:text-gray-500': color === 'gray',
+    })
 
-  const unlockedAchievements = achievements.filter(a => a.unlocked);
-  const lockedAchievements = achievements.filter(a => !a.unlocked).slice(0, 3);
+    switch (icon) {
+      case "BookOpen": return <BookOpen className={className} />;
+      case "Flame": return <Flame className={className} />;
+      case "Target": return <Target className={className} />;
+      case "Star": return <Star className={className} />;
+    }
+  }
+
+  const unlockedAchievements = gottenAchievements;
+  const lockedAchievements = achievements.filter(a => !gottenAchievements.some(ga => ga.id === a.id)).slice(0, 3);
 
   return (
     <Card className={cn("bg-gradient-to-r from-orange-50 to-red-50 dark:from-orange-950/20 dark:to-red-950/20 border-orange-200 dark:border-orange-800", className)}>
@@ -167,7 +99,6 @@ export function StreakDisplay({
             <div className="space-y-2">
               {/* Unlocked Achievements */}
               {unlockedAchievements.slice(0, 3).map((achievement) => {
-                const Icon = achievement.icon;
                 return (
                   <div key={achievement.id} className="flex items-center gap-3 p-2 rounded-lg bg-white/50 dark:bg-white/5 border border-white/20 dark:border-white/10">
                     <div className={cn("p-1.5 rounded-full", {
@@ -178,14 +109,7 @@ export function StreakDisplay({
                       'bg-blue-100 dark:bg-blue-950/50': achievement.color === 'blue',
                       'bg-yellow-100 dark:bg-yellow-950/50': achievement.color === 'yellow',
                     })}>
-                      <Icon className={cn("h-3 w-3", {
-                        'text-green-600 dark:text-green-400': achievement.color === 'green',
-                        'text-orange-600 dark:text-orange-400': achievement.color === 'orange',
-                        'text-red-600 dark:text-red-400': achievement.color === 'red',
-                        'text-purple-600 dark:text-purple-400': achievement.color === 'purple',
-                        'text-blue-600 dark:text-blue-400': achievement.color === 'blue',
-                        'text-yellow-600 dark:text-yellow-400': achievement.color === 'yellow',
-                      })} />
+                      {getIconComponent(achievement.icon, achievement.color)}
                     </div>
                     <div className="flex-1">
                       <h4 className="text-sm font-medium">{achievement.title}</h4>
@@ -197,11 +121,10 @@ export function StreakDisplay({
 
               {/* Locked Achievements */}
               {lockedAchievements.map((achievement) => {
-                const Icon = achievement.icon;
                 return (
                   <div key={achievement.id} className="flex items-center gap-3 p-2 rounded-lg bg-gray-100/50 dark:bg-gray-800/50 border border-gray-200/20 dark:border-gray-700/20 opacity-60">
                     <div className="p-1.5 rounded-full bg-gray-200 dark:bg-gray-700">
-                      <Icon className="h-3 w-3 text-gray-400 dark:text-gray-500" />
+                      {getIconComponent(achievement.icon, "gray")}
                     </div>
                     <div className="flex-1">
                       <h4 className="text-sm font-medium text-gray-500 dark:text-gray-400">{achievement.title}</h4>

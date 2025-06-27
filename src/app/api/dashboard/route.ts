@@ -3,9 +3,11 @@ import { authOptions } from "@/lib/auth";
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma, StudySession } from "@prisma/client";
+import { checkForAchievements } from "@/utils/checkForAchievements";
+import { Achievement } from "@/utils/achievements";
 
 const getDuration = (session: StudySession) => {
-    
+
 
   return session.completedAt ? session.completedAt.getTime() - session.createdAt.getTime() : 0;
 }
@@ -110,7 +112,6 @@ export async function GET() {
       };
     });
 
-
     const dashboardData = {
       stats: {
         totalSets,
@@ -126,7 +127,18 @@ export async function GET() {
       weeklyData: calculateWeeklyData(recentSessions),
     };
 
-    return NextResponse.json(dashboardData);
+    await checkForAchievements(dashboardData, userId);
+
+    const user = await prisma.user.findUnique({
+      where: {
+        id: userId,
+      },
+    });
+
+    return NextResponse.json({
+      ...dashboardData,
+      achievements: user?.achievements as unknown as Achievement[],
+    });
 
   } catch (error) {
     console.error('Error in GET /api/dashboard:', error);

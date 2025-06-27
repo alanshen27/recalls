@@ -102,9 +102,14 @@ export default function Navbar() {
                   </DropdownMenu>
                 </>
               ) : (
-                <Button asChild>
-                  <Link href="/auth/signin">Sign In</Link>
-                </Button>
+                <div className="flex items-center gap-3">
+                  <Button variant="ghost" asChild>
+                    <Link href="/auth/signup">Sign Up</Link>
+                  </Button>
+                  <Button asChild>
+                    <Link href="/auth/signin">Sign In</Link>
+                  </Button>
+                </div>
               )}
             </div>
 
@@ -238,11 +243,18 @@ export default function Navbar() {
                 <div className="space-y-6">
                   <div className="text-center py-8">
                     <p className="text-muted-foreground mb-6">Sign in to access your account</p>
-                    <Button asChild className="w-full h-12 text-base">
-                      <Link href="/auth/signin" onClick={() => setIsMobileMenuOpen(false)}>
-                        Sign In
-                      </Link>
-                    </Button>
+                    <div className="space-y-3">
+                      <Button asChild className="w-full h-12 text-base">
+                        <Link href="/auth/signup" onClick={() => setIsMobileMenuOpen(false)}>
+                          Sign Up
+                        </Link>
+                      </Button>
+                      <Button variant="outline" asChild className="w-full h-12 text-base">
+                        <Link href="/auth/signin" onClick={() => setIsMobileMenuOpen(false)}>
+                          Sign In
+                        </Link>
+                      </Button>
+                    </div>
                   </div>
                 </div>
               )}

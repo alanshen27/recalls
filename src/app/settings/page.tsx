@@ -2,11 +2,38 @@
 
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ArrowLeft } from "lucide-react";
+import { signOut } from "next-auth/react";
 import { useRouter } from "next/navigation";
+import { useEffect, useState } from "react";
 
 export default function SettingsPage() {
-  const router = useRouter();
+  const router = useRouter(); 
+
+  const [theme, setTheme] = useState("system");
+
+  useEffect(() => {
+    const theme = localStorage.getItem("theme");
+    if (theme) {
+      setTheme(theme);
+    }
+  }, []);
+  
+  useEffect(() => {
+    localStorage.setItem("theme", theme);
+    document.documentElement.classList.toggle("dark", theme === "dark");
+  }, [theme]);
+
+  const handleDeleteAccount = () => {
+    fetch("/api/auth/delete", {
+      method: "DELETE",
+    }).then(() => {
+      signOut();
+      router.push("/");
+    });
+  }
 
   return (
     <div className="container max-w-4xl py-8 mx-auto">
@@ -43,7 +70,18 @@ export default function SettingsPage() {
                     Select your preferred theme.
                   </p>
                 </div>
-                <Button variant="outline" disabled>System</Button>
+                <div>
+                <Select value={theme} onValueChange={setTheme}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select a theme" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="light">Light</SelectItem>
+                    <SelectItem value="dark">Dark</SelectItem>
+                    <SelectItem value="system">System</SelectItem>
+                  </SelectContent>
+                </Select>
+                </div>
               </div>
             </div>
           </CardContent>
@@ -74,7 +112,22 @@ export default function SettingsPage() {
                     Permanently delete your account and all data.
                   </p>
                 </div>
-                <Button variant="destructive">Delete</Button>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="destructive">Delete</Button>
+                  </DialogTrigger>
+                  <DialogContent>
+                    <DialogHeader>
+                      <DialogTitle>Are you sure?</DialogTitle>
+                    </DialogHeader>
+                    <DialogDescription>
+                      This action cannot be undone.
+                    </DialogDescription>
+                    <DialogFooter>
+                      <Button variant="destructive" onClick={handleDeleteAccount}>Delete</Button>
+                    </DialogFooter>
+                  </DialogContent>
+                </Dialog>
               </div>
             </div>
           </CardContent>

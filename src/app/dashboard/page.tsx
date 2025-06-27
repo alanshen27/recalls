@@ -6,7 +6,6 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Progress } from "@/components/ui/progress";
 import { LibrarySidebar } from '@/components/library-sidebar';
-import { Loading } from "@/components/ui/loading";
 import { FileUpload } from '@/components/file-upload';
 import { StreakDisplay } from '@/components/streak-display';
 import { 
@@ -20,6 +19,8 @@ import {
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { toast } from 'sonner';
+import DashboardLoading from './loading';
+import { Achievement } from '@/utils/achievements';
 
 interface DashboardStats {
   totalSets: number;
@@ -54,14 +55,14 @@ export default function DashboardPage() {
   const [weeklyData, setWeeklyData] = useState<WeeklyData[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [showFileUpload, setShowFileUpload] = useState(false);
-
+  const [gottenAchievements, setGottenAchievements] = useState<Achievement[]>([]);
   useEffect(() => {
     const fetchDashboardData = async () => {
       try {
         const response = await fetch('/api/dashboard');
         if (!response.ok) throw new Error('Failed to fetch dashboard data');
         const data = await response.json();
-        
+        setGottenAchievements(data.achievements);
         setStats(data.stats);
         setRecentSets(data.recentSets);
         setWeeklyData(data.weeklyData);
@@ -105,18 +106,7 @@ export default function DashboardPage() {
   };
 
   if (isLoading) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-8">
-          <aside className="lg:col-span-1">
-            <LibrarySidebar />
-          </aside>
-          <main className="lg:col-span-3">
-            <Loading />
-          </main>
-        </div>
-      </div>
-    );
+    return <DashboardLoading />;
   }
 
   const formatTime = (minutes: number) => {
@@ -209,7 +199,7 @@ export default function DashboardPage() {
           </div>
 
           {/* File Upload Section - Show when no sets or as "Get Started" */}
-          {stats?.totalSets === 0 && (
+          {showFileUpload && (
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
@@ -224,7 +214,7 @@ export default function DashboardPage() {
           )}
 
           {/* Show "Get Started" button if user has sets but wants to upload more */}
-          {stats?.totalSets && stats.totalSets > 0 && !showFileUpload && (
+          {!showFileUpload && (
             <Card>
               <CardContent className="p-6">
                 <div className="text-center">
@@ -250,7 +240,12 @@ export default function DashboardPage() {
                   Recent Sets
                 </CardTitle>
               </CardHeader>
-              <CardContent>
+              <CardContent className="flex flex-col">
+                {recentSets.length === 0 && (
+                  <div className="text-center text-sm text-muted-foreground">
+                    No recent sets
+                  </div>
+                )}
                 <div className="space-y-1 flex flex-col">
                   {recentSets.map((set) => (
                     <Link key={set.id} href={`/sets/${set.id}`}>
@@ -277,9 +272,7 @@ export default function DashboardPage() {
             <StreakDisplay 
               currentStreak={stats?.streakDays || 0} 
               longestStreak={stats?.longestStreak || 0}
-              totalSets={stats?.totalSets || 0}
-              totalStudyTime={stats?.totalStudyTime || 0}
-              averageRetentionRate={stats?.averageRetentionRate || 0}
+              gottenAchievements={gottenAchievements}
             />
           </div>
 

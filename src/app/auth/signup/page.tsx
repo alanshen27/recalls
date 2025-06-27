@@ -7,22 +7,23 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useSearchParams, useRouter } from 'next/navigation';
+import { useSearchParams } from 'next/navigation';
 import { Suspense, useState } from 'react';
 import { Loading } from '@/components/ui/loading';
 import { Brain, Zap, Users, TrendingUp, Eye, EyeOff } from 'lucide-react';
 import Link from 'next/link';
 
-function SignIn() {
+function SignUp() {
   const searchParams = useSearchParams();
-  const router = useRouter();
   const callbackUrl = searchParams.get('callbackUrl') || '/';
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [formData, setFormData] = useState({
+    name: '',
     email: '',
-    password: ''
+    password: '',
+    confirmPassword: ''
   });
   const [errors, setErrors] = useState<{[key: string]: string}>({});
   
@@ -38,6 +39,10 @@ function SignIn() {
   const validateForm = () => {
     const newErrors: {[key: string]: string} = {};
 
+    if (!formData.name.trim()) {
+      newErrors.name = 'Name is required';
+    }
+
     if (!formData.email.trim()) {
       newErrors.email = 'Email is required';
     } else if (!/\S+@\S+\.\S+/.test(formData.email)) {
@@ -46,13 +51,19 @@ function SignIn() {
 
     if (!formData.password) {
       newErrors.password = 'Password is required';
+    } else if (formData.password.length < 6) {
+      newErrors.password = 'Password must be at least 6 characters';
+    }
+
+    if (formData.password !== formData.confirmPassword) {
+      newErrors.confirmPassword = 'Passwords do not match';
     }
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
-  const handleEmailSignIn = async (e: React.FormEvent) => {
+  const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!validateForm()) {
@@ -62,20 +73,34 @@ function SignIn() {
     setIsLoading(true);
     
     try {
-      const result = await signIn('credentials', {
-        email: formData.email,
-        password: formData.password,
-        redirect: false,
+      const response = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+        }),
       });
 
-      if (result?.error) {
-        setErrors({ general: 'Invalid email or password' });
-      } else {
-        router.push(callbackUrl);
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Registration failed');
       }
+
+      // @todo: email verification
+
+    //   await signIn('credentials', {
+    //     email: formData.email,
+    //     password: formData.password,
+    //     callbackUrl: callbackUrl,
+    //   });
     } catch (error) {
-      console.error('Sign in error:', error);
-      setErrors({ general: 'Sign in failed' });
+      console.error('Registration error:', error);
+      setErrors({ general: error instanceof Error ? error.message : 'Registration failed' });
     } finally {
       setIsLoading(false);
     }
@@ -89,23 +114,23 @@ function SignIn() {
   return (
     <div className="min-h-screen flex">
       {/* Left Side - Form */}
-      <div className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8">
+      <div className="flex-1 flex items-center justify-center px-4 sm:px-6 lg:px-8 py-8">
         <div className="w-full max-w-md">
-        
+          
           {/* Header */}
           <div className="text-center mb-8">
             <h1 className="text-3xl font-bold tracking-tight mb-2">
-              Welcome back to Recall
+              Join Recall
             </h1>
             <p className="text-muted-foreground">
-              Sign in to continue your learning journey
+              Create your account to start your learning journey
             </p>
           </div>
           
-          {/* Sign In Card */}
+          {/* Sign Up Card */}
           <Card className="border-0 shadow-lg">
             <CardContent className="p-8">
-              {/* Google Sign In */}
+              {/* Google Sign Up */}
               <Button
                 variant="outline"
                 className="w-full h-12 text-base font-medium mb-6"
@@ -115,7 +140,7 @@ function SignIn() {
                 {isGoogleLoading ? (
                   <div className="flex items-center gap-2">
                     <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                    Signing in...
+                    Signing up...
                   </div>
                 ) : (
                   <div className="flex items-center gap-3">
@@ -141,12 +166,28 @@ function SignIn() {
               </div>
 
               {/* Email/Password Form */}
-              <form onSubmit={handleEmailSignIn} className="space-y-4">
+              <form onSubmit={handleSignUp} className="space-y-4">
                 {errors.general && (
                   <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
                     {errors.general}
                   </div>
                 )}
+
+                <div className="space-y-2">
+                  <Label htmlFor="name">Full Name</Label>
+                  <Input
+                    id="name"
+                    name="name"
+                    type="text"
+                    value={formData.name}
+                    onChange={handleInputChange}
+                    placeholder="Enter your full name"
+                    className={errors.name ? 'border-red-500' : ''}
+                  />
+                  {errors.name && (
+                    <p className="text-sm text-red-600">{errors.name}</p>
+                  )}
+                </div>
 
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
@@ -173,7 +214,7 @@ function SignIn() {
                       type={showPassword ? 'text' : 'password'}
                       value={formData.password}
                       onChange={handleInputChange}
-                      placeholder="Enter your password"
+                      placeholder="Create a password"
                       className={errors.password ? 'border-red-500 pr-10' : 'pr-10'}
                     />
                     <button
@@ -189,6 +230,22 @@ function SignIn() {
                   )}
                 </div>
 
+                <div className="space-y-2">
+                  <Label htmlFor="confirmPassword">Confirm Password</Label>
+                  <Input
+                    id="confirmPassword"
+                    name="confirmPassword"
+                    type="password"
+                    value={formData.confirmPassword}
+                    onChange={handleInputChange}
+                    placeholder="Confirm your password"
+                    className={errors.confirmPassword ? 'border-red-500' : ''}
+                  />
+                  {errors.confirmPassword && (
+                    <p className="text-sm text-red-600">{errors.confirmPassword}</p>
+                  )}
+                </div>
+
                 <Button
                   type="submit"
                   className="w-full h-12 text-base font-medium"
@@ -197,26 +254,26 @@ function SignIn() {
                   {isLoading ? (
                     <div className="flex items-center gap-2">
                       <div className="w-4 h-4 border-2 border-current border-t-transparent rounded-full animate-spin" />
-                      Signing in...
+                      Creating account...
                     </div>
                   ) : (
-                    'Sign In'
+                    'Create Account'
                   )}
                 </Button>
               </form>
               
               <div className="mt-6 text-center">
                 <p className="text-sm text-muted-foreground">
-                  Don't have an account?{' '}
-                  <Link href="/auth/signup" className="text-primary hover:underline">
-                    Sign up
+                  Already have an account?{' '}
+                  <Link href="/auth/signin" className="text-primary hover:underline">
+                    Sign in
                   </Link>
                 </p>
               </div>
               
               <div className="mt-6 text-center">
                 <p className="text-sm text-muted-foreground">
-                  By signing in, you agree to our{' '}
+                  By creating an account, you agree to our{' '}
                   <Link href="/terms" className="text-primary hover:underline">
                     Terms of Service
                   </Link>{' '}
@@ -265,7 +322,7 @@ function SignIn() {
             </div>
             
             <h2 className="text-4xl font-bold tracking-tight mb-6">
-              Transform Your Learning Experience
+              Start Your Learning Journey
             </h2>
             
             <p className="text-xl text-muted-foreground mb-8 leading-relaxed">
@@ -322,7 +379,7 @@ function SignIn() {
 export default function Page() {
   return (
     <Suspense fallback={<div className="flex items-center justify-center h-screen"><Loading /></div>}>
-      <SignIn />
+      <SignUp />
     </Suspense>
   );
-}
+} 

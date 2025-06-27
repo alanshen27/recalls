@@ -113,6 +113,7 @@ export async function POST(request: NextRequest) {
                 flashcards: {
                     create: flashcards,
                 },
+                public: true,
             },
             include: {
                 flashcards: true,
