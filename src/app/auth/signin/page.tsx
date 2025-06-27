@@ -20,6 +20,9 @@ function SignIn() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [showResendForm, setShowResendForm] = useState(false);
+  const [resendEmail, setResendEmail] = useState('');
+  const [isResending, setIsResending] = useState(false);
   const [formData, setFormData] = useState({
     email: '',
     password: ''
@@ -69,7 +72,13 @@ function SignIn() {
       });
 
       if (result?.error) {
-        setErrors({ general: 'Invalid email or password' });
+        if (result.error.includes('verify your email')) {
+          setErrors({ general: 'Please verify your email address before signing in.' });
+          setShowResendForm(true);
+          setResendEmail(formData.email);
+        } else {
+          setErrors({ general: 'Invalid email or password' });
+        }
       } else {
         router.push(callbackUrl);
       }
@@ -84,6 +93,36 @@ function SignIn() {
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
     await signIn('google', { callbackUrl: callbackUrl });
+  };
+
+  const handleResendVerification = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setIsResending(true);
+    
+    try {
+      const response = await fetch('/api/auth/resend-verification', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: resendEmail }),
+      });
+
+      const data = await response.json();
+
+      if (response.ok) {
+        setErrors({ general: 'Verification email sent! Please check your inbox.' });
+        setShowResendForm(false);
+        setResendEmail('');
+      } else {
+        setErrors({ general: data.error || 'Failed to resend verification email' });
+      }
+    } catch (error) {
+      console.error('Resend verification error:', error);
+      setErrors({ general: 'Failed to resend verification email' });
+    } finally {
+      setIsResending(false);
+    }
   };
   
   return (
@@ -145,6 +184,43 @@ function SignIn() {
                 {errors.general && (
                   <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
                     {errors.general}
+                  </div>
+                )}
+
+                {showResendForm && (
+                  <div className="p-4 bg-primary/5 border border-primary/20 rounded-md">
+                    <h3 className="font-medium text-primary mb-2">Resend Verification Email</h3>
+                    <form onSubmit={handleResendVerification} className="space-y-3">
+                      <Input
+                        type="email"
+                        value={resendEmail}
+                        onChange={(e) => setResendEmail(e.target.value)}
+                        placeholder="Enter your email"
+                        required
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          type="submit"
+                          size="sm"
+                          disabled={isResending}
+                          className="flex-1"
+                        >
+                          {isResending ? 'Sending...' : 'Resend Email'}
+                        </Button>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => {
+                            setShowResendForm(false);
+                            setResendEmail('');
+                            setErrors({});
+                          }}
+                        >
+                          Cancel
+                        </Button>
+                      </div>
+                    </form>
                   </div>
                 )}
 

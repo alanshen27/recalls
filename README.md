@@ -28,6 +28,12 @@ Recall is a modern web application built with Next.js that helps users create, s
   - Smooth animations and transitions
   - Loading states and error handling
 
+- **Authentication & Security**
+  - Email/password authentication
+  - Google OAuth integration
+  - Email verification system
+  - Secure password hashing
+
 ## Tech Stack
 
 - **Frontend**
@@ -43,6 +49,7 @@ Recall is a modern web application built with Next.js that helps users create, s
   - Prisma ORM
   - PostgreSQL Database (Supabase)
   - NextAuth.js for Authentication
+  - Nodemailer for Email
 
 ## Getting Started
 
@@ -69,20 +76,48 @@ Recall is a modern web application built with Next.js that helps users create, s
    NEXTAUTH_URL="http://localhost:3000"
    GOOGLE_CLIENT_ID="your-google-client-id"
    GOOGLE_CLIENT_SECRET="your-google-client-secret"
+
+   # Email Configuration (for email verification)
+   SMTP_HOST="smtp.gmail.com"
+   SMTP_PORT="587"
+   SMTP_USER="your-email@gmail.com"
+   SMTP_PASS="your-app-password"
+   SMTP_FROM="noreply@yourdomain.com"
    ```
 
-4. **Initialize the database**
+4. **Set up email for verification**
+   
+   For Gmail:
+   - Enable 2-factor authentication
+   - Generate an App Password
+   - Use the App Password as `SMTP_PASS`
+   
+   For other providers:
+   - Update `SMTP_HOST` and `SMTP_PORT` accordingly
+   - Use your email credentials
+
+5. **Run database migrations**
    ```bash
-   npx prisma generate
-   npx prisma db push
+   npx prisma migrate dev
    ```
 
-5. **Run the development server**
+6. **Start the development server**
    ```bash
    npm run dev
    ```
 
-6. Open [http://localhost:3000](http://localhost:3000) in your browser
+7. **Open your browser**
+   Navigate to [http://localhost:3000](http://localhost:3000)
+
+## Email Verification
+
+The application includes a complete email verification system:
+
+- Users must verify their email before signing in
+- Verification emails are sent automatically upon registration
+- Users can resend verification emails if needed
+- Verification links expire after 24 hours
+- Beautiful, responsive email templates
 
 ## Usage
 
@@ -111,8 +146,12 @@ Recall is a modern web application built with Next.js that helps users create, s
 
 ## Contributing
 
-Contributions are welcome! Please feel free to submit a Pull Request.
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
 
 ## License
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+This project is licensed under the MIT License.
