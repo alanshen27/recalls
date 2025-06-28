@@ -115,8 +115,7 @@ function SignIn() {
     }
   };
 
-  const handleResendVerification = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleResendVerification = async () => {
     setIsResending(true);
     
     try {
@@ -200,7 +199,7 @@ function SignIn() {
               </div>
 
               {/* Email/Password Form */}
-              <form onSubmit={handleEmailSignIn} className="space-y-4">
+              <div className="space-y-4">
                 {errors.general && (
                   <div className="p-3 text-sm text-red-600 bg-red-50 border border-red-200 rounded-md">
                     {errors.general}
@@ -210,7 +209,7 @@ function SignIn() {
                 {showResendForm && (
                   <div className="p-4 bg-primary/5 border border-primary/20 rounded-md">
                     <h3 className="font-medium text-primary mb-2">Resend Verification Email</h3>
-                    <form onSubmit={handleResendVerification} className="space-y-3">
+                    <div className="space-y-3">
                       <Input
                         type="email"
                         value={resendEmail}
@@ -223,6 +222,7 @@ function SignIn() {
                           type="submit"
                           size="sm"
                           disabled={isResending}
+                          onClick={handleResendVerification}
                           className="flex-1"
                         >
                           {isResending ? 'Sending...' : 'Resend Email'}
@@ -240,10 +240,10 @@ function SignIn() {
                           Cancel
                         </Button>
                       </div>
-                    </form>
+                    </div>
                   </div>
                 )}
-
+                <form onSubmit={handleEmailSignIn} className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="email">Email</Label>
                   <Input
@@ -287,7 +287,7 @@ function SignIn() {
 
                 <Button
                   type="submit"
-                  className="w-full h-12 text-base font-medium"
+                  className="w-full h-12 text-base font-medium mt-4"
                   disabled={isLoading}
                 >
                   {isLoading ? (
@@ -299,7 +299,8 @@ function SignIn() {
                     'Sign In'
                   )}
                 </Button>
-              </form>
+                </form>
+              </div>
               
               <div className="mt-6 text-center">
                 <p className="text-sm text-muted-foreground">
