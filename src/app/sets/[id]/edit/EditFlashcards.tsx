@@ -41,31 +41,37 @@ export default function EditFlashcards({ setId, initialFlashcards, previewMode, 
   useEffect(() => {
     if (previewMode) return; // Skip AI completion in preview mode
     
-    if (focusedDefinition && !flashcards.find((f) => f.id === focusedDefinition)?.definition?.length && !focusedTerm) {
-      setAutocomplete("Loading AI completion...");
-      const fetchAutocomplete = async () => {
-        const response = await fetch(`/api/sets/${setId}/completion`, {
-          method: 'POST',
-          body: JSON.stringify({ word: flashcards.find((f) => f.id === focusedDefinition)?.term, type: 'term' }),
-        });
-        const data = await response.json();
-        setAutocomplete(data);
-      };
-      fetchAutocomplete();
+    if (focusedDefinition && !focusedTerm) {
+      const flashcard = flashcards.find((f) => f.id === focusedDefinition);
+      if (flashcard && !flashcard.definition?.length) {
+        setAutocomplete("Loading AI completion...");
+        const fetchAutocomplete = async () => {
+          const response = await fetch(`/api/sets/${setId}/completion`, {
+            method: 'POST',
+            body: JSON.stringify({ word: flashcard.term, type: 'definition' }),
+          });
+          const data = await response.json();
+          setAutocomplete(data);
+        };
+        fetchAutocomplete();
+      }
     }
-    if (focusedTerm && !flashcards.find((f) => f.id === focusedTerm)?.term?.length && !focusedDefinition) {
-      setAutocomplete("Loading AI completion...");
-      const fetchAutocomplete = async () => {
-        const response = await fetch(`/api/sets/${setId}/completion`, {
-          method: 'POST',
-          body: JSON.stringify({ word: flashcards.find((f) => f.id === focusedTerm)?.definition, type: 'definition' }),
-        });
-        const data = await response.json();
-        setAutocomplete(data);
-      };
-      fetchAutocomplete();
+    if (focusedTerm && !focusedDefinition) {
+      const flashcard = flashcards.find((f) => f.id === focusedTerm);
+      if (flashcard && !flashcard.term?.length) {
+        setAutocomplete("Loading AI completion...");
+        const fetchAutocomplete = async () => {
+          const response = await fetch(`/api/sets/${setId}/completion`, {
+            method: 'POST',
+            body: JSON.stringify({ word: flashcard.definition, type: 'term' }),
+          });
+          const data = await response.json();
+          setAutocomplete(data);
+        };
+        fetchAutocomplete();
+      }
     }
-  }, [focusedDefinition, focusedTerm, flashcards, previewMode, setId]);
+  }, [focusedDefinition, focusedTerm, previewMode, setId]);
 
   const flashcardRefs = useRef<Record<string, HTMLInputElement>>({});
 
