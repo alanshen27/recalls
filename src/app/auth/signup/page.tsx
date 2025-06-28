@@ -13,6 +13,7 @@ import { Loading } from '@/components/ui/loading';
 import { Brain, Zap, Users, TrendingUp, Eye, EyeOff, Mail } from 'lucide-react';
 import Link from 'next/link';
 import { toast } from 'sonner';
+import { useRouter } from 'next/navigation';
 
 function SignUp() {
   const searchParams = useSearchParams();
@@ -28,6 +29,7 @@ function SignUp() {
     confirmPassword: ''
   });
   const [errors, setErrors] = useState<{[key: string]: string}>({});
+  const router = useRouter();
   
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -110,7 +112,27 @@ function SignUp() {
 
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
-    await signIn('google', { callbackUrl: callbackUrl });
+    try {
+      const result = await signIn('google', { 
+        callbackUrl: callbackUrl,
+        redirect: false 
+      });
+      
+      if (result?.error) {
+        if (result.error.includes('verify your email')) {
+          setErrors({ general: 'Please verify your email address before signing in with Google.' });
+        } else {
+          setErrors({ general: 'Google sign-up failed. Please try again.' });
+        }
+        setIsGoogleLoading(false);
+      } else if (result?.ok) {
+        router.push(callbackUrl);
+      }
+    } catch (error) {
+      console.error('Google sign-up error:', error);
+      setErrors({ general: 'Google sign-up failed. Please try again.' });
+      setIsGoogleLoading(false);
+    }
   };
   
   return (
